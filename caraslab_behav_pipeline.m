@@ -28,6 +28,16 @@ if nargin < 3
     ephys_recording_type = 'none';
 end
 
+% If this function is run directly (behavior only)
+if nargin ==0
+    default_dir = '/mnt/CL_4TB_1/Matt/LASHAKA_BEHAVIOR_ONLY/OFC_Inactivation';
+    
+    Savedir = uigetdir(default_dir, 'Select save directory');
+    Behaviordir = Savedir;
+    ephys_recording_type = 'none';
+end
+
+
 %Prompt user to select folders
 % uigetfile_n_dir copied from here:
 % https://www.mathworks.com/matlabcentral/fileexchange/32555-uigetfile_n_dir-select-multiple-files-and-directories
