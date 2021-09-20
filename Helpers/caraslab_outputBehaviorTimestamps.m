@@ -249,11 +249,11 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Ephysdir, recording_form
                     
                     %% Output DAC codes
                     % Event IDs:
-                        % 0: DAC1 = sound on/off
-                        % 1: DAC2 = spout on/off
-                        % 2: DAC3 = trial start/end
+                        % 1: DAC1 = sound on/off
+                        % 2: DAC2 = spout on/off
+                        % 3: DAC3 = trial start/end
                     %% Output spout onset-offset timestamps
-                    spout_events = epData.event_ids == 1;
+                    spout_events = epData.event_ids == 2;
                     all_spout_timestamps = epData.timestamps(spout_events);
                     
                     if sum(spout_events) > 0
@@ -292,19 +292,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Ephysdir, recording_form
                     end
                     
                     %% Output modulated sound onset-offset timestamps
-                    % Note: In some recordings I only recorded the
-                    % onset/offset of modulated noise (and not the trials)
-                    % The problem is I couldn't find a good spot to collect
-                    % an AM noise flag, so sometimes the onset time is off.
-                    % The offset time seems more accurate
-                    % As a fix, find the first amplitude modulated noise
-                    % offset and match with behavioral file to extrapolate
-                    % trial onset/offsets
-                    
-                    % Note 2: DO NOT use this as a reliable timestamp. I
-                    % couldn't find a good spot to collect these precisely
-                    % yet. Trial onset/offset (DAC3) are much more reliable
-                    sound_events = epData.event_ids == 0;
+                    sound_events = epData.event_ids == 1;
                     all_sound_timestamps = epData.timestamps(sound_events);
                     
                     sound_event_states = epData.event_states(sound_events);
@@ -333,7 +321,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Ephysdir, recording_form
                     % session info from ePsych; also translate the response code bitmask
                     session_data = struct2table(cur_session.Data);
 
-                    trial_events = epData.event_ids == 2;
+                    trial_events = epData.event_ids == 3;
                     all_trial_events_timestamps = epData.timestamps(trial_events);
                     % Check if this recording happened before I started
                     % collecting trial events
