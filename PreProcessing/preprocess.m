@@ -53,7 +53,7 @@ end
 
 
 %Create trialmat and dprimemat in preparation for psychometric fitting
-function ret_output = create_mats(Session, ret_output, j, output_dir, max_trial)
+function output = create_mats(Session, output, j, output_dir, max_trial)
 
     %-------------------------------
     %Prepare data
@@ -82,8 +82,8 @@ function ret_output = create_mats(Session, ret_output, j, output_dir, max_trial)
     n_trials = [n_trials' unique_stim]; 
     good_stim = n_trials(n_trials(:,1) >= 5, 2);
     if length(good_stim) < 2
-        ret_output(j).trialmat = [];
-        ret_output(j).dprimemat = [];
+        output(j).trialmat = [];
+        output(j).dprimemat = [];
         return
     end
     
@@ -136,32 +136,29 @@ function ret_output = create_mats(Session, ret_output, j, output_dir, max_trial)
 
         %Calculate the hit rate
         n_hit = sum(bitget(go_resp_m,hitbit));
-        
 
-        
         n_go = numel(go_resp_m);
         
         hit_rate = n_hit/n_go;
         
-        %Adjust floor
+        %Adjust floor and ceiling
         if hit_rate <0.05
-            hit_rate = 0.05;
+            adjusted_hit_rate = 0.05;
+        elseif hit_rate >0.95
+            adjusted_hit_rate = 0.95;
+        else
+            adjusted_hit_rate = hit_rate;
         end
         
-        %adjust ceiling
-        if hit_rate >0.95
-            hit_rate = 0.95;
-        end
-
         % MML edit: log-linear correction for fa_rate (Hautus 1995) in case of extreme values
 %         hit_rate = (n_hit +0.5)/(n_go + 1);
 
         %Adjust number of hits to match adjusted hit rate (so we can fit
         %data with psignifit later)
-        n_hit = hit_rate*n_go;
+        adjusted_n_hit = adjusted_hit_rate*n_go;
 
         %Append to trial mat
-        trialmat = [trialmat;u_go_stim(m),n_hit,n_go]; %#ok<AGROW>
+        trialmat = [trialmat; u_go_stim(m), adjusted_n_hit, n_go, n_hit]; %#ok<AGROW>
 
     end
 
@@ -182,31 +179,31 @@ function ret_output = create_mats(Session, ret_output, j, output_dir, max_trial)
 
     fa_rate = n_fa/n_nogo;
     
-    %Correct floor
+            
+    %Adjust floor and ceiling
     if fa_rate <0.05
-        fa_rate = 0.05;
+        adjusted_fa_rate = 0.05;
+    elseif fa_rate >0.95
+        adjusted_fa_rate = 0.95;
+    else
+        adjusted_fa_rate = fa_rate;
     end
     
-    %Correct ceiling
-    if fa_rate >0.95
-        fa_rate = 0.95;
-    end
-
     % MML edit: log-linear correction for fa_rate (Hautus 1995) in case of extreme values
 %     fa_rate = (n_fa + 0.5)/(n_nogo + 1);
 
     %Adjust number of false alarms to match adjusted fa rate (so we can
     %fit data with psignifit later)
-    n_fa = fa_rate*n_nogo;
+    adjusted_n_fa = adjusted_fa_rate*n_nogo;
 
     %Convert to z score
     % z_fa = sqrt(2)*erfinv(2*fa_rate-1);
 
     % MML edit:  Is this the same as norminv?
-    z_fa = norminv(fa_rate);
+    z_fa = norminv(adjusted_fa_rate);
 
     %Append to trialmat
-    trialmat = [trialmat;stim_val,n_fa,n_nogo];
+    trialmat = [trialmat; stim_val, adjusted_n_fa, n_nogo, n_fa];
 
 
     %Convert stimulus values to log and sort data so safe stimulus is on top
@@ -223,8 +220,8 @@ function ret_output = create_mats(Session, ret_output, j, output_dir, max_trial)
     dprime = z_hit - z_fa;
     dprimemat = [trialmat(2:end,1),dprime];
 
-    ret_output(j).trialmat = trialmat;
-    ret_output(j).dprimemat = dprimemat;
+    output(j).trialmat = trialmat;
+    output(j).dprimemat = dprimemat;
     
     %% Output trialmat and dprimemat into a CSV
     if j == 1
@@ -248,7 +245,7 @@ function ret_output = create_mats(Session, ret_output, j, output_dir, max_trial)
     
     %trialmat first
     output_table = array2table(trialmat);
-    output_table.Properties.VariableNames = {'Stimulus', 'N_FA_or_Hit', 'N_trials'};
+    output_table.Properties.VariableNames = {'Stimulus', 'Adjusted_N_FA_or_Hit', 'N_trials', 'N_FA_or_Hit'};
     output_table.Block_id = repmat(session_id, size(trialmat, 1), 1);
     
     writetable(output_table, fullfile(output_dir, [subj_id '_allSessions_trialMat.csv']), 'WriteMode',write_or_append);

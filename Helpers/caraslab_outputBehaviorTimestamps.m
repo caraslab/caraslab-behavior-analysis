@@ -256,7 +256,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Ephysdir, recording_form
                     spout_events = epData.event_ids == 2;
                     all_spout_timestamps = epData.timestamps(spout_events);
                     
-                    if sum(spout_events) > 0
+                    if sum(spout_events) > 1
                         spout_event_states = epData.event_states(spout_events);
                         spout_onset_events = spout_event_states == 1;
                         spout_offset_events = spout_event_states == 0;
@@ -327,7 +327,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Ephysdir, recording_form
                     % collecting trial events
                     % If this is the case, use first sound offset to
                     % extrapolate all other times
-                    if sum(trial_events) > 0
+                    if sum(trial_events) > 1
                         trial_event_states = epData.event_states(trial_events);
                         trial_onset_events = trial_event_states == 1;
                         trial_offset_events = trial_event_states == 0;
@@ -390,3 +390,4 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Ephysdir, recording_form
             %% TODO: output opto timestamps here if/when needed
 
 end
+
