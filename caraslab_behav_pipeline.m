@@ -1,4 +1,4 @@
-function caraslab_behav_pipeline(Savedir, Behaviordir, ephys_recording_type)
+function caraslab_behav_pipeline(Savedir, Behaviordir, ephys_recording_type, assert_five_amdepths)
 
 % caraslab_behav_pipeline.m
 % This pipeline takes ePsych .mat behavioral files, combines and analyzes them and
@@ -97,7 +97,7 @@ for i = 1:numel(datafolders)
     % _allSessions_trialMat.csv: number of stimulus presentations and hits/FAs 
     % _allSessions_dprimeMat.csv: d' by stimulus
     %max_trial = 100;
-    preprocess(cur_savedir)
+    preprocess(cur_savedir, assert_five_amdepths)
 
     %% 4. FIT PSYCHOMETRIC FUNCTIONS 
     %Fits behavioral data with psychometric functions using psignifit v4. Fit

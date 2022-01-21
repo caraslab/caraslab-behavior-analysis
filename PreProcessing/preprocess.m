@@ -1,4 +1,4 @@
-function preprocess(directoryname, max_trial)
+function preprocess(directoryname, max_trial, assert_five_amdepths)
 %preprocess(directoryname)
 %
 %This function goes through each datafile in a directory, and calculates
@@ -17,6 +17,10 @@ function preprocess(directoryname, max_trial)
 
 if nargin < 2
     max_trial = 0;
+end
+
+if nargin < 3
+    assert_five_amdepths = 0;
 end
 
 %List the files in the folder (each file = animal)
@@ -42,7 +46,7 @@ for i = 1:numel(files)
            continue
        end
       %Create trialmat and dprimemat in preparation for psychometric fits  
-      output = create_mats(Session, output, j, files.folder, max_trial);
+      output = create_mats(Session, output, j, files.folder, max_trial, assert_five_amdepths);
 
     end
     
@@ -53,7 +57,7 @@ end
 
 
 %Create trialmat and dprimemat in preparation for psychometric fitting
-function output = create_mats(Session, output, j, output_dir, max_trial)
+function output = create_mats(Session, output, j, output_dir, max_trial, assert_five_amdepths)
 
     %-------------------------------
     %Prepare data
@@ -63,6 +67,27 @@ function output = create_mats(Session, output, j, output_dir, max_trial)
 
     %Stimuli (AM depth in proportion)
     stim = [Session(j).Data.AMdepth]';
+    
+    if assert_five_amdepths
+        if unique(stim) > 5
+            last_five_amdepth = [];
+            % Loop inversely through stim presentations and break loop once
+            % 5 different am depths appear
+            for dummy_idx=length(stim):-1:1
+                if ~ismember(stim(dummy_idx), last_five_amdepth)
+                    last_five_amdepth(end+1) = stim(dummy_idx);
+                end
+                
+                if length(last_five_amdepth) == 5
+                    break
+                end
+            end
+        end
+        
+        % only include stim in last_five_amdepths
+        [good_stim, ~] = ismember(stim, last_five_amdepth);
+        stim = stim(good_stim);
+    end
 
     %Responses (coded via bitmask in Info.Bits)
     resp = [Session(j).Data.ResponseCode]';
@@ -86,10 +111,6 @@ function output = create_mats(Session, output, j, output_dir, max_trial)
         output(j).dprimemat = [];
         return
     end
-    
-  
-    
-    
     
     % Remove stimuli that have less than 5 trials
     rtrial = find(~ismember(stim,good_stim,'rows'));
