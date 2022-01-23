@@ -28,6 +28,10 @@ if nargin < 3
     ephys_recording_type = 'none';
 end
 
+if nargin < 4
+    assert_five_amdepths = 0;
+end
+
 % If this function is run directly (behavior only)
 if nargin ==0
     default_dir = '/mnt/CL_4TB_1/Matt/LASHAKA_BEHAVIOR_ONLY/OFC_Inactivation';

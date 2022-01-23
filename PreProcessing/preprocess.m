@@ -1,4 +1,4 @@
-function preprocess(directoryname, max_trial, assert_five_amdepths)
+function preprocess(directoryname, assert_five_amdepths, max_trial)
 %preprocess(directoryname)
 %
 %This function goes through each datafile in a directory, and calculates
@@ -16,12 +16,13 @@ function preprocess(directoryname, max_trial, assert_five_amdepths)
 %Written by ML Caras Jan 29, 2018
 
 if nargin < 2
-    max_trial = 0;
+    assert_five_amdepths = 0;
 end
 
 if nargin < 3
-    assert_five_amdepths = 0;
+    max_trial = 0;
 end
+
 
 %List the files in the folder (each file = animal)
 [files,fileIndex] = listFiles(directoryname,'*.mat');
@@ -67,27 +68,6 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
 
     %Stimuli (AM depth in proportion)
     stim = [Session(j).Data.AMdepth]';
-    
-    if assert_five_amdepths
-        if unique(stim) > 5
-            last_five_amdepth = [];
-            % Loop inversely through stim presentations and break loop once
-            % 5 different am depths appear
-            for dummy_idx=length(stim):-1:1
-                if ~ismember(stim(dummy_idx), last_five_amdepth)
-                    last_five_amdepth(end+1) = stim(dummy_idx);
-                end
-                
-                if length(last_five_amdepth) == 5
-                    break
-                end
-            end
-        end
-        
-        % only include stim in last_five_amdepths
-        [good_stim, ~] = ismember(stim, last_five_amdepth);
-        stim = stim(good_stim);
-    end
 
     %Responses (coded via bitmask in Info.Bits)
     resp = [Session(j).Data.ResponseCode]';
@@ -102,6 +82,33 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
     resp = resp(rmind);
     ttype = ttype(rmind);
 
+    if assert_five_amdepths
+        am_stim = stim(stim > 0);
+        if length(unique(am_stim)) > 5
+            last_five_amdepth = [];
+            % Loop inversely through stim presentations and break loop once
+            % 5 different am depths appear
+            for dummy_idx=length(am_stim):-1:1
+                if ~ismember(am_stim(dummy_idx), last_five_amdepth)
+                    last_five_amdepth(end+1) = am_stim(dummy_idx);
+                end
+                
+                if length(last_five_amdepth) == 5
+                    break
+                end
+            end
+        
+            % Append 0 dB
+            last_five_amdepth = [last_five_amdepth 0];
+
+            % only include stim in last_five_amdepths
+            [good_stim, ~] = ismember(stim, last_five_amdepth);
+            stim = stim(good_stim);
+            resp = resp(good_stim);
+            ttype = ttype(good_stim);
+        end
+    end
+    
     % Count number of trials _ orig
     [n_trials, unique_stim] = hist(stim,unique(stim));
     n_trials = [n_trials' unique_stim]; 
