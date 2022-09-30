@@ -34,11 +34,11 @@ end
 
 % If this function is run directly (behavior only)
 if nargin ==0
-    default_dir = '/mnt/CL_4TB_1/Matt/LASHAKA_BEHAVIOR_ONLY/OFC_Inactivation';
+    default_dir = '/mnt/CL_4TB_2/Matt/OFC CaMK2 ChR2 behavior';
     
     Savedir = uigetdir(default_dir, 'Select save directory');
-    Behaviordir = Savedir;
-    ephys_recording_type = 'none';
+    Behaviordir = default_dir;
+    ephys_recording_type = 'optoBehavior';
 end
 
 
