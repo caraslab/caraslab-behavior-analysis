@@ -12,6 +12,8 @@ options.sigmoidName = 'norm'; %use cumulative gaussian fit
 options.expType = 'YesNo'; %for a go/nogo experiment
 options.confP  = 0.95; %confidence level for confidence intervals
 
+options.useGPU = 0;
+
 %Set up plotOptions structure
 plotOptions.dataColor      = [0 0 0];
 plotOptions.plotData       = 1;

@@ -11,6 +11,8 @@ function plot_pfs_behav(directoryname,figuredirectory)
 %Written by MLC 11/28/2016.
 
 % Patched by M Macedo-Lima November, 2020
+% Patched by R Ying November 2022
+
 %---------------------------------------
 warning('off','psignifit:ThresholdPCchanged');
 set(0,'DefaultTextInterpreter','none');
@@ -18,7 +20,7 @@ set(0,'DefaultTextInterpreter','none');
 [options, plotOptions] = setOptions;
 
 %Get a list of .mat files in the directory
-[file_list, file_index] = listFiles(directoryname,'*.mat');
+[file_list, file_index] = listFiles(directoryname,'*allSessions.mat');
 
 subplot_rows = 6;
 subplot_cols = 6; %subplot index too small
@@ -59,6 +61,9 @@ for which_file = 1:length(file_index)
             continue
         end
         
+        % Make sure threshold is not below lowest AM depth presented
+        low_range = data_to_fit(2, 1);
+        options.stimulusRange = [low_range, -0.01];
         
         %Fit the data
         [options,results,zFA] = find_threshPC(data_to_fit,options);
@@ -150,6 +155,7 @@ for which_file = 1:length(file_index)
     load(savename);
     block_id = {};
     thresholds = {};
+    optoStims = {};
     for session_idx=1:numel(Session)
         try
             try
@@ -173,11 +179,26 @@ for which_file = 1:length(file_index)
                 throw(ME)
             end
         end
+
         block_id{end+1} = cur_block_id;
         thresholds{end+1} = cur_threshold;
+                
+        % Check for Optostim field
+        if isfield(Session(session_idx).Info, 'Optostim')
+            optoStim = Session(session_idx).Info.Optostim;
+            optoStims{end+1} = optoStim;
+        end
+     
     end
-    output_table = cell2table(horzcat(block_id', thresholds'));
-    output_table.Properties.VariableNames = {'Block_id' 'Threshold'};
+    if isempty(optoStims)
+        output_table = cell2table(horzcat(block_id', thresholds'));
+
+        output_table.Properties.VariableNames = {'Block_id' 'Threshold'};
+    else
+        output_table = cell2table(horzcat(block_id', thresholds', optoStims'));
+        output_table.Properties.VariableNames = {'Block_id' 'Threshold' 'Optostim'};
+    end
+
     writetable(output_table, fullfile([savename '_psychThreshold.csv']));
     
 end

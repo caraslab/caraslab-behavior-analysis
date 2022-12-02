@@ -32,14 +32,18 @@ if nargin < 4
     assert_five_amdepths = 0;
 end
 
+split_by_optoStim = 0;
+
 % If this function is run directly (behavior only)
 if nargin ==0
-    default_dir = '/mnt/CL_4TB_2/Matt/OFC CaMK2 ChR2 behavior';
+    default_dir = '/mnt/CL_4TB_2/Matt/OFC CaMK2 ChR2 behavior/PostHitOpto';
     
     Savedir = uigetdir(default_dir, 'Select save directory');
     Behaviordir = default_dir;
     ephys_recording_type = 'optoBehavior';
+    split_by_optoStim = 0;
 end
+
 
 
 %Prompt user to select folders
@@ -83,6 +87,10 @@ for i = 1:numel(datafolders)
 
     caraslab_combinefiles(cur_sourcedir,cur_savedir)
 
+    %% 2.1 Split opto trials into separate Session entries
+    if split_by_optoStim
+        caraslab_split_opto_trials(cur_savedir)
+    end
 
     %% 3. CREATE TRIALMAT AND DPRIMEMAT IN PREPARATION FOR PSYCHOMETRIC FITTING
     %This function goes through each datafile in a directory, and calculates

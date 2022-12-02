@@ -47,8 +47,8 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
 
     switch recording_format
-        % TODO: CATCH ERROR WHEN FOLDERS DO NOT CONTAIN EPHYS
-        % RECORDINGS
+        % TODO 1: CATCH ERROR WHEN FOLDERS DO NOT CONTAIN EPHYS RECPRDINGS
+        % TODO 2: CALCULATE RESPONSE TIMES TO TRIALS 
         %% Synapse recording
         case 'synapse'
             % File matching to ephys info
@@ -361,11 +361,16 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                     go_trial_data = session_data(session_data.TrialType == 0, :);
 
+                    
+                    % DATENUM is discouraged apparently; use datetime
+                    % instead
+%                     first_go_trial_onset_timestamp = datenum(go_trial_data.ComputerTimestamp(1,4:end));
+%                     all_computer_timestamps_seconds = datenum(session_data.ComputerTimestamp(:,4:end));
 
-                    first_go_trial_onset_timestamp = datenum(go_trial_data.ComputerTimestamp(1,4:end));
-                    all_computer_timestamps_seconds = datenum(session_data.ComputerTimestamp(:,4:end));
+                    first_go_trial_onset_timestamp = datetime(go_trial_data.ComputerTimestamp(1,:));
+                    all_computer_timestamps_seconds = datetime(session_data.ComputerTimestamp(:,:));
 
-                    distances_from_first_go_trial_onset = all_computer_timestamps_seconds - first_go_trial_onset_timestamp;
+                    distances_from_first_go_trial_onset = seconds(all_computer_timestamps_seconds - first_go_trial_onset_timestamp);
 
                     session_data.Trial_onset = distances_from_first_go_trial_onset + first_go_trial_onset;
                     session_data.Trial_offset = session_data.Trial_onset + 1;
@@ -394,6 +399,10 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                 subj_id = cur_session.Info.Name;
                 session_id = cur_session.Info.Date;
+                trialInfo_filename = fullfile(Behaviordir, ...
+                    [subj_id '_' session_id '_trialInfo.csv']);
+                ePsychMetadata_filename = fullfile(Behaviordir, ...
+                    [subj_id '_' session_id '_ePsychMetadata']);
                 %% Output trial parameters
                 % Combine the timestamps with the 
                 % session info from ePsych; also translate the response code bitmask
@@ -407,14 +416,39 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_data.Miss = bitget(session_data.ResponseCode, response_code_bits.miss);
                 session_data.CR = bitget(session_data.ResponseCode, response_code_bits.cr);
                 session_data.FA = bitget(session_data.ResponseCode, response_code_bits.fa);
+                
+                % Convert computer timestamps into seconds
+                session_data.TimestampSeconds = datetime(session_data.ComputerTimestamp);
+                session_data.TimestampSeconds = seconds(session_data.TimestampSeconds - session_data.TimestampSeconds(1));
 
-                writetable(session_data, fullfile(Behaviordir, ...
-                    [subj_id '_' session_id '_trialInfo.csv']));
+                % Check for Optostim field, then append to existing file if
+                % it already exists, then remove repeated trials and
+                % reorder by TrialID
+                if isfield(cur_session.Info, 'Optostim')
+                    if isfile(trialInfo_filename)
+                        % Save current table as a temp file so that the column
+                        % formatting containing arrays changes to CSV
+                        % format
+                        writetable(session_data, 'temp.csv');
+                        session_data = readtable('temp.csv');
+                        delete('temp.csv');
+                        
+                        temp_table = readtable(trialInfo_filename);
+                        session_data = vertcat(temp_table, session_data);
+                        % remove duplicated entries (e.g. NO-GO trials);
+                        [~,ia] = unique(session_data.TrialID, 'rows');
+                        session_data = session_data(ia,:);
+                        % sort by TrialID
+                        session_data = sortrows(session_data, 'TrialID');
+                    end
+                end
+                
+
+                writetable(session_data, trialInfo_filename);
 
                 % Output the entire ePsych Info field as metadata
                 Info = cur_session.Info;
-                save(fullfile(Behaviordir, ...
-                    [subj_id '_' session_id '_ePsychMetadata']), 'Info', '-v7.3');
+                save(ePsychMetadata_filename, 'Info', '-v7.3');
             end
         end
 end

@@ -1,4 +1,4 @@
-function preprocess(directoryname, assert_five_amdepths, max_trial)
+function preprocess_optoActiveData(directoryname, assert_five_amdepths, max_trial)
 %preprocess(directoryname)
 %
 %This function goes through each datafile in a directory, and calculates
@@ -17,9 +17,12 @@ function preprocess(directoryname, assert_five_amdepths, max_trial)
 
 if nargin < 2
     assert_five_amdepths = 0;
-elseif nargin < 3
+end
+
+if nargin < 3
     max_trial = 0;
 end
+
 
 %List the files in the folder (each file = animal)
 [files,fileIndex] = listFiles(directoryname,'*.mat');
@@ -43,6 +46,9 @@ for i = 1:numel(files)
        if ~(length(Session(j).Data) > 1)
            continue
        end
+       
+       % Split session into opto-on and opto-off before processing
+       
       %Create trialmat and dprimemat in preparation for psychometric fits  
       output = create_mats(Session, output, j, files.folder, max_trial, assert_five_amdepths);
 
@@ -74,7 +80,7 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
 
     %Remove reminder trials
     rmind = ~logical([Session(j).Data.Reminder]');
-
+    
     stim = stim(rmind);
     resp = resp(rmind);
     ttype = ttype(rmind);
@@ -125,6 +131,7 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
     %Pull out bits for decoding responses
     fabit = Session(j).Info.Bits.fa;
     hitbit = Session(j).Info.Bits.hit;
+
 
 
 
@@ -223,7 +230,7 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
     %Convert to z score
     % z_fa = sqrt(2)*erfinv(2*fa_rate-1);
 
-    % MML edit:  Is this the same as norminv? Yes, it is.
+    % MML edit:  Is this the same as norminv?
     z_fa = norminv(adjusted_fa_rate);
 
     %Append to trialmat
@@ -238,7 +245,7 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
     hitrates = trialmat(2:end,2)./trialmat(2:end,3);
 
     % z_hit = sqrt(2)*erfinv(2*(hitrates)-1);
-    % MML edit: Is this the same as norminv? Yes, it is.
+    % MML edit: Is this the same as norminv?
     z_hit = norminv(hitrates);
 
     dprime = z_hit - z_fa;
@@ -269,31 +276,16 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
     
     %trialmat first
     output_table = array2table(trialmat);
+    output_table.Properties.VariableNames = {'Stimulus', 'Adjusted_N_FA_or_Hit', 'N_trials', 'N_FA_or_Hit'};
     output_table.Block_id = repmat(session_id, size(trialmat, 1), 1);
     
-    % Check for Optostim field
-    if isfield(Session(j).Info, 'Optostim')
-        optoStim = Session(j).Info.Optostim;
-        output_table.Optostim = repmat(optoStim, size(trialmat, 1), 1);
-        output_table.Properties.VariableNames = {'Stimulus', 'Adjusted_N_FA_or_Hit', 'N_trials', 'N_FA_or_Hit', 'Block_id', 'Optostim'};
-    else
-        output_table.Properties.VariableNames = {'Stimulus', 'Adjusted_N_FA_or_Hit', 'N_trials', 'N_FA_or_Hit', 'Block_id'};
-    end
-
     writetable(output_table, fullfile(output_dir, [subj_id '_allSessions_trialMat.csv']), 'WriteMode',write_or_append);
     
     %Now dprimemat
     output_table = array2table(dprimemat);
+    output_table.Properties.VariableNames = {'Stimulus', 'd_prime'};
     output_table.Block_id = repmat(session_id, size(dprimemat, 1), 1);
-    % Check for Optostim field
-    if isfield(Session(j).Info, 'Optostim')
-        optoStim = Session(j).Info.Optostim;
-        output_table.Optostim = repmat(optoStim, size(dprimemat, 1), 1);
-        output_table.Properties.VariableNames = {'Stimulus', 'd_prime', 'Block_id', 'Optostim', };
-    else
-        output_table.Properties.VariableNames = {'Stimulus', 'd_prime', 'Block_id'};
-    end
-
+    
     writetable(output_table, fullfile(output_dir, [subj_id '_allSessions_dprimeMat.csv']), 'WriteMode',write_or_append);
     
        
