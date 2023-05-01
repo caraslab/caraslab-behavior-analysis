@@ -1,4 +1,4 @@
-function preprocess(directoryname, assert_five_amdepths, max_trial)
+function preprocess(directoryname, assert_five_amdepths, trial_subset)
 %preprocess(directoryname)
 %
 %This function goes through each datafile in a directory, and calculates
@@ -18,11 +18,11 @@ function preprocess(directoryname, assert_five_amdepths, max_trial)
 if nargin < 2
     assert_five_amdepths = 0;
 elseif nargin < 3
-    max_trial = 0;
+    trial_subset = NaN;
 end
 
 %List the files in the folder (each file = animal)
-[files,fileIndex] = listFiles(directoryname,'*.mat');
+[files,fileIndex] = listFiles(directoryname,'*allSessions.mat');
 files = files(fileIndex);
 
 %For each file...
@@ -34,7 +34,7 @@ for i = 1:numel(files)
     
     %Load data
     filename=files(i).name;
-    data_file=[directoryname,'/',filename];
+    data_file=fullfile(directoryname, filename);
     load(data_file);
     
     %For each session...
@@ -43,8 +43,15 @@ for i = 1:numel(files)
        if ~(length(Session(j).Data) > 1)
            continue
        end
+       
+        % Skip files without Info.Bits field which indicates frequency tuning
+        % protocol was used
+        if ~isfield(Session(j).Info,'Bits')
+            continue
+        end
+        
       %Create trialmat and dprimemat in preparation for psychometric fits  
-      output = create_mats(Session, output, j, files.folder, max_trial, assert_five_amdepths);
+      output = create_mats(Session, output, j, files.folder, trial_subset, assert_five_amdepths);
 
     end
     
@@ -55,7 +62,7 @@ end
 
 
 %Create trialmat and dprimemat in preparation for psychometric fitting
-function output = create_mats(Session, output, j, output_dir, max_trial, assert_five_amdepths)
+function output = create_mats(Session, output, j, output_dir, trial_subset, assert_five_amdepths)
 
     %-------------------------------
     %Prepare data
@@ -122,6 +129,36 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
     resp(rtrial, :) = [];
     ttype(rtrial, :) = [];
     
+    % Subset trials (optional)
+    if ~isnan(trial_subset)
+        go_ind = find(ttype == 0);
+        go_trialid = [Session(j).Data(go_ind).TrialID]';
+
+        if trial_subset(2) == Inf
+            last_go_trial = length(go_trialid);
+        end
+
+        good_go_trials = [go_trialid(trial_subset(1)), go_trialid(last_go_trial)];
+
+        if trial_subset(1) == 1
+            first_trial = 1;
+        else
+            first_trial = good_go_trials(1);
+        end
+
+        if trial_subset(2) == Inf
+            last_trial = length(stim);
+        else
+            last_trial = good_go_trials(2);
+        end
+
+        good_trials = [Session(j).Data(first_trial:last_trial).TrialID]';
+
+        stim = stim(good_trials);
+        resp = resp(good_trials);
+        ttype = ttype(good_trials);
+    end
+    
     %Pull out bits for decoding responses
     fabit = Session(j).Info.Bits.fa;
     hitbit = Session(j).Info.Bits.hit;
@@ -144,18 +181,7 @@ function output = create_mats(Session, output, j, output_dir, max_trial, assert_
 
         %Pull out data for just that stimulus
         m_ind = find(go_stim == u_go_stim(m));
-        cur_go_ind = go_ind(m_ind);
-        
-        % Remove trials past a specific trial
-        if max_trial > 0
-            m_ind = m_ind(1:max_trial);
-            cur_go_ind = cur_go_ind(1:max_trial);
-            
-            if max(cur_go_ind) > max_go_trial
-                max_go_trial = max(cur_go_ind);
-            end
-        end
-        
+
         go_resp_m = go_resp(m_ind); %#ok<*FNDSB>
 
         %Calculate the hit rate

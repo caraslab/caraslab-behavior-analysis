@@ -1,4 +1,4 @@
-function caraslab_behav_pipeline(Savedir, Behaviordir, ephys_recording_type, assert_five_amdepths)
+function caraslab_behav_pipeline(Savedir, Behaviordir, ephys_recording_type, assert_five_amdepths, trial_subset)
 
 % caraslab_behav_pipeline.m
 % This pipeline takes ePsych .mat behavioral files, combines and analyzes them and
@@ -32,11 +32,15 @@ if nargin < 4
     assert_five_amdepths = 0;
 end
 
+if nargin < 5
+    trial_subset = NaN;
+end
+
 split_by_optoStim = 0;
 
 % If this function is run directly (behavior only)
 if nargin ==0
-    default_dir = '/mnt/CL_4TB_2/Matt/OFC CaMK2 ChR2 behavior/PostHitOpto';
+    default_dir = '/mnt/CL_4TB_2/Matt/OFC CaMK2 ChR2 behavior/AMTrialOpto_fiberOptic';
     
     Savedir = uigetdir(default_dir, 'Select save directory');
     Behaviordir = default_dir;
@@ -108,8 +112,7 @@ for i = 1:numel(datafolders)
     % This function also outputs two csv files with trial performance
     % _allSessions_trialMat.csv: number of stimulus presentations and hits/FAs 
     % _allSessions_dprimeMat.csv: d' by stimulus
-    %max_trial = 100;
-    preprocess(cur_savedir, assert_five_amdepths)
+    preprocess(cur_savedir, assert_five_amdepths, trial_subset)
 
     %% 4. FIT PSYCHOMETRIC FUNCTIONS 
     %Fits behavioral data with psychometric functions using psignifit v4. Fit

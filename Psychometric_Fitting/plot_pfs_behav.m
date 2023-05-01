@@ -28,10 +28,17 @@ subplot_cols = 6; %subplot index too small
 %For each file...
 for which_file = 1:length(file_index)
     
-    
+
     %Load file
     filename = file_list(file_index(which_file)).name;
-    load([directoryname,'/',filename]);
+    load(fullfile(directoryname, filename));
+    
+    % Skip files without Info.Bits field which indicates frequency tuning
+    % protocol was used
+    if ~isfield(Session(1).Info,'Bits')
+        continue
+    end
+    
     
     %Remove fitdata field to start fresh
     if isfield(output,'fitdata')

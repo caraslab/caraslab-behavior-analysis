@@ -35,6 +35,10 @@ end
 %Sort files by date 
 [sortedfiles, ~] = sortStruct(files, 'date');
 
+% Extract subject ID from first filename
+subj_id = split(sortedfiles(1).name, "_");
+subj_id = subj_id{1};
+
 %For each file...
 for k = 1:numel(sortedfiles)
 
@@ -52,30 +56,46 @@ for k = 1:numel(sortedfiles)
         Session(k).Info = temp.Info;
     catch ME
         if strcmp(ME.identifier, 'MATLAB:nonExistentField')
-            % This might happen when ePsych crashes and we need to use the
-            % recovered file, which is formatted differently and
-            % incompletely. You need to manually search for this file in
-            % the MatLab ePsych crash files and rename it appropriately.
-            % This chunk should take care of the rest
-            Session(k).Data = temp.data;
-            Session(k).Info = temp.info;
-            Session(k).Info.Name = temp.info.Subject.Name;
-            Session(k).Info.Date = temp.info.StartDate;
-            Session(k).Info.Bits = struct('hit',1, 'miss', 2, 'cr', 3, 'fa', 4);
+            try
+                % This might happen when ePsych crashes and we need to use the
+                % recovered file, which is formatted differently and
+                % incompletely. You need to manually search for this file in
+                % the MatLab ePsych crash files and rename it appropriately.
+                % This chunk should take care of the rest
+                Session(k).Data = temp.data;
+                Session(k).Info = temp.info;
+                Session(k).Info.Name = temp.info.Subject.Name;
+                Session(k).Info.Date = temp.info.StartDate;
+                Session(k).Info.Bits = struct('hit',1, 'miss', 2, 'cr', 3, 'fa', 4);
+            catch ME
+                if strcmp(ME.identifier, 'MATLAB:nonExistentField')
+                    % If this happens a second time, we might be dealing
+                    % with a frequency tuning file, which for the moment is
+                    % missing the Info field. Handle this here
+                    Session(k).Data = temp.Data;
+                    
+                    % Exctract start date from first ComputerTimestamp
+                    first_timestamp = datetime(struct2table(temp.Data).ComputerTimestamp(1,:));
+                    Session(k).Info.Name = subj_id;
+                    Session(k).Info.Date = [int2str(day(first_timestamp)) '-' ...
+                                            cell2mat(month(first_timestamp, "shortname")) '-' ...
+                                            int2str(year(first_timestamp))];
+                    Session(k).Info.StartTime = struct2table(temp.Data).ComputerTimestamp(1,:);
+                else
+                    throw(ME)
+                end        
+            end
         else
             throw(ME)
         end
     end
-
 end
 
 
 
 %Save data structure to new file
 %e = regexp(filename,'\d\d\d\d\d\d','end');
-% Extract subject ID from last filename
-subj_id = split(filename, "_");
-subj_id = subj_id{1};
+
 
 savename = fullfile(savepath,[subj_id '_allSessions.mat']);
 save(savename,'Session')

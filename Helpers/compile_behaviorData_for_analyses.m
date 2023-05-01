@@ -6,7 +6,7 @@ function compile_behaviorData_for_analyses()
 %
 
 %Prompt user to select folder
-default_dir = '/mnt/CL_4TB_2/Matt/OFC CaMK2 ChR2 behavior';
+default_dir = '/mnt/CL_4TB_2/Matt/OFC CaMK2 ChR2 behavior/AMTrialOpto_fiberOptic';
 Savedir = uigetdir(default_dir, 'Select save directory');
 datafolders_names = uigetfile_n_dir(default_dir,'Select data directories');
 datafolders = {};

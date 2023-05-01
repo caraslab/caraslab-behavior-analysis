@@ -16,7 +16,7 @@ function caraslab_split_opto_trials(directoryname)
 %Written by ML Caras Jan 29, 2018
 
 %List the files in the folder (each file = animal)
-[files,fileIndex] = listFiles(directoryname,'*.mat');
+[files,fileIndex] = listFiles(directoryname,'*allSessions.mat');
 files = files(fileIndex);
 
 %For each file...
@@ -28,7 +28,7 @@ for i = 1:numel(files)
 
     %Load data
     filename=files(i).name;
-    data_file=[directoryname,'/',filename];
+    data_file= fullfile(directoryname, filename);
     load(data_file);
 
     Session_outputCopy = struct();

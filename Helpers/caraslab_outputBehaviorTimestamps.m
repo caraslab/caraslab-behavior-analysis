@@ -353,36 +353,56 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                             session_data.Trial_offset = temp_offset(1:min_trials);
                         end
                     end
-                else
-                    first_go_trial_offset = sound_offset_timestamps(1);
-                    % First GO offset TTL should roughly match with first
-                    % onset + 1 second
-                    first_go_trial_onset = first_go_trial_offset - 1;
-
-                    go_trial_data = session_data(session_data.TrialType == 0, :);
-
+                    % Unmask the bitmask    
+                    response_code_bits = cur_session.Info.Bits;
+                    session_data.Hit = bitget(session_data.ResponseCode, response_code_bits.hit);
+                    session_data.Miss = bitget(session_data.ResponseCode, response_code_bits.miss);
+                    session_data.CR = bitget(session_data.ResponseCode, response_code_bits.cr);
+                    session_data.FA = bitget(session_data.ResponseCode, response_code_bits.fa);
                     
-                    % DATENUM is discouraged apparently; use datetime
-                    % instead
-%                     first_go_trial_onset_timestamp = datenum(go_trial_data.ComputerTimestamp(1,4:end));
-%                     all_computer_timestamps_seconds = datenum(session_data.ComputerTimestamp(:,4:end));
+                else
+                    
+                    % If this fails, it could mean this file is a frequency
+                    % tuning protocol, which does not contain fields such
+                    % as TrialType
+                    try
+                        first_go_trial_offset = sound_offset_timestamps(1);
+                        % First GO offset TTL should roughly match with first
+                        % onset + 1 second; skip this, if so
+                        first_go_trial_onset = first_go_trial_offset - 1;
 
-                    first_go_trial_onset_timestamp = datetime(go_trial_data.ComputerTimestamp(1,:));
-                    all_computer_timestamps_seconds = datetime(session_data.ComputerTimestamp(:,:));
+                        go_trial_data = session_data(session_data.TrialType == 0, :);
 
-                    distances_from_first_go_trial_onset = seconds(all_computer_timestamps_seconds - first_go_trial_onset_timestamp);
 
-                    session_data.Trial_onset = distances_from_first_go_trial_onset + first_go_trial_onset;
-                    session_data.Trial_offset = session_data.Trial_onset + 1;
+                        % DATENUM is discouraged apparently; use datetime
+                        % instead
+    %                     first_go_trial_onset_timestamp = datenum(go_trial_data.ComputerTimestamp(1,4:end));
+    %                     all_computer_timestamps_seconds = datenum(session_data.ComputerTimestamp(:,4:end));
+
+                        first_go_trial_onset_timestamp = datetime(go_trial_data.ComputerTimestamp(1,:));
+                        all_computer_timestamps_seconds = datetime(session_data.ComputerTimestamp(:,:));
+
+                        distances_from_first_go_trial_onset = seconds(all_computer_timestamps_seconds - first_go_trial_onset_timestamp);
+
+                        session_data.Trial_onset = distances_from_first_go_trial_onset + first_go_trial_onset;
+                        session_data.Trial_offset = session_data.Trial_onset + 1;
+                        
+                        % Unmask the bitmask    
+                        response_code_bits = cur_session.Info.Bits;
+                        session_data.Hit = bitget(session_data.ResponseCode, response_code_bits.hit);
+                        session_data.Miss = bitget(session_data.ResponseCode, response_code_bits.miss);
+                        session_data.CR = bitget(session_data.ResponseCode, response_code_bits.cr);
+                        session_data.FA = bitget(session_data.ResponseCode, response_code_bits.fa);
+                        
+                    catch ME
+                        if strcmp(ME.identifier, 'MATLAB:table:UnrecognizedVarName')
+                            fprintf('No Trial events for: %s\n', cur_path.name)
+                        end
+                    end
                 end
+                
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
                 session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
-                % Unmask the bitmask    
-                response_code_bits = cur_session.Info.Bits;
-                session_data.Hit = bitget(session_data.ResponseCode, response_code_bits.hit);
-                session_data.Miss = bitget(session_data.ResponseCode, response_code_bits.miss);
-                session_data.CR = bitget(session_data.ResponseCode, response_code_bits.cr);
-                session_data.FA = bitget(session_data.ResponseCode, response_code_bits.fa);
 
                 writetable(session_data, fullfile(cur_savedir, 'CSV files', ...
                     [subj_id '_' session_id '_trialInfo.csv']));
