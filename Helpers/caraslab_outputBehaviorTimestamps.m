@@ -5,7 +5,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
     % TDT system.
     % Inputs:
     % Behaviordir: path to ePsych behavior files
-    % Ephysdir: path to processed (NOT TANK) ephys folder
+    % Savedir: path to processed (NOT TANK) ephys folder
     % recording_format: 'synapse' or 'intan'; important for TTL formatting
     
     % Outputs:
@@ -160,7 +160,11 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                 writetable(session_data, fullfile(cur_savedir, 'CSV files', ...
                     [subj_id '_' session_id '_trialInfo.csv']));
-
+                
+                % Also save a copy of trialInfo in Behaviordir
+                writetable(session_data, fullfile(Behaviordir, ...
+                    [subj_id '_' session_id '_trialInfo.csv']));
+                
                 % Output the entire ePsych Info field as metadata
                 Info = cur_session.Info;
                 save(fullfile(cur_savedir, 'CSV files', ...
@@ -373,12 +377,6 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                         go_trial_data = session_data(session_data.TrialType == 0, :);
 
-
-                        % DATENUM is discouraged apparently; use datetime
-                        % instead
-    %                     first_go_trial_onset_timestamp = datenum(go_trial_data.ComputerTimestamp(1,4:end));
-    %                     all_computer_timestamps_seconds = datenum(session_data.ComputerTimestamp(:,4:end));
-
                         first_go_trial_onset_timestamp = datetime(go_trial_data.ComputerTimestamp(1,:));
                         all_computer_timestamps_seconds = datetime(session_data.ComputerTimestamp(:,:));
 
@@ -406,7 +404,11 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                 writetable(session_data, fullfile(cur_savedir, 'CSV files', ...
                     [subj_id '_' session_id '_trialInfo.csv']));
-
+                
+                % Also save a copy of trialInfo in Behaviordir
+                writetable(session_data, fullfile(Behaviordir, ...
+                    [subj_id '_' session_id '_trialInfo.csv']));
+                
                 % Output the entire ePsych Info field as metadata
                 Info = cur_session.Info;
                 save(fullfile(cur_savedir, 'CSV files', ...
@@ -436,6 +438,66 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_data.Miss = bitget(session_data.ResponseCode, response_code_bits.miss);
                 session_data.CR = bitget(session_data.ResponseCode, response_code_bits.cr);
                 session_data.FA = bitget(session_data.ResponseCode, response_code_bits.fa);
+                
+                % Convert computer timestamps into seconds
+                session_data.TimestampSeconds = datetime(session_data.ComputerTimestamp);
+                session_data.TimestampSeconds = seconds(session_data.TimestampSeconds - session_data.TimestampSeconds(1));
+
+                % Check for Optostim field, then append to existing file if
+                % it already exists, then remove repeated trials and
+                % reorder by TrialID
+                if isfield(cur_session.Info, 'Optostim')
+                    if isfile(trialInfo_filename)
+                        % Save current table as a temp file so that the column
+                        % formatting containing arrays changes to CSV
+                        % format
+                        writetable(session_data, 'temp.csv');
+                        session_data = readtable('temp.csv');
+                        delete('temp.csv');
+                        
+                        temp_table = readtable(trialInfo_filename);
+                        session_data = vertcat(temp_table, session_data);
+                        % remove duplicated entries (e.g. NO-GO trials);
+                        [~,ia] = unique(session_data.TrialID, 'rows');
+                        session_data = session_data(ia,:);
+                        % sort by TrialID
+                        session_data = sortrows(session_data, 'TrialID');
+                    end
+                end
+                
+
+                writetable(session_data, trialInfo_filename);
+
+                % Output the entire ePsych Info field as metadata
+                Info = cur_session.Info;
+                save(ePsychMetadata_filename, 'Info', '-v7.3');
+            end
+
+        case '1IFC'
+            for session_idx=1:numel(Session)
+                cur_session = Session(session_idx);
+
+                subj_id = cur_session.Info.Name;
+                session_id = cur_session.Info.Date;
+                trialInfo_filename = fullfile(Behaviordir, ...
+                    [subj_id '_' session_id '_trialInfo.csv']);
+                ePsychMetadata_filename = fullfile(Behaviordir, ...
+                    [subj_id '_' session_id '_ePsychMetadata']);
+                %% Output trial parameters
+                % Combine the timestamps with the 
+                % session info from ePsych; also translate the response code bitmask
+                session_data = struct2table(cur_session.Data);
+
+                session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
+                session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
+                % Unmask the bitmask    
+                response_code_bits = cur_session.Info.Bits;
+                session_data.Hit = session_data.ResponseCode == response_code_bits.Rtrough_hit;
+                session_data.Miss = session_data.ResponseCode == response_code_bits.Rtrough_miss;
+                session_data.RTimeout = session_data.ResponseCode == response_code_bits.Rtrough_timeout;
+                session_data.CR = session_data.ResponseCode == response_code_bits.Ltrough_hit;
+                session_data.FA = session_data.ResponseCode == response_code_bits.Ltrough_miss;
+                session_data.LTimeout = session_data.ResponseCode == response_code_bits.Ltrough_timeout;
                 
                 % Convert computer timestamps into seconds
                 session_data.TimestampSeconds = datetime(session_data.ComputerTimestamp);

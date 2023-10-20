@@ -1,4 +1,4 @@
-function plot_pfs_behav(directoryname,figuredirectory)
+function plot_pfs_behav(directoryname,figuredirectory, experiment_type)
 %plot_pfs_behav(directoryname,figuredirectory)
 %
 %For each animal in a specified directory, this function
@@ -47,6 +47,7 @@ for which_file = 1:length(file_index)
     
     %Set value of dprime that we define as threshold
     options.dprimeThresh = 1;
+    
     
     %Clear plots and handle vectors
     f1 = myplot;
