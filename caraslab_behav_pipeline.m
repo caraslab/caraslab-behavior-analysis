@@ -21,7 +21,7 @@ function caraslab_behav_pipeline(Savedir, Behaviordir, experiment_type, assert_f
 %   into folders named: 
 %   shock_training, psych_testing, pre_passive, post_passive
 
-% experiment_type: optional: 'synapse', 'intan', 'optoBehavior', '1IFC'
+% experiment_type: optional: 'synapse', 'intan', 'optoBehavior', '1IFC', 'synapse_1IFC'
 
 % If no recording type given
 if nargin < 3
@@ -118,7 +118,7 @@ for i = 1:numel(datafolders)
     %info is saved to a data structure within the file. Fits are created both
     %in percent correct space, and in dprime space. 
     % In addition to plots, output a csv file with the thresholds by day
-    plot_pfs_behav(cur_savedir,cur_savedir, experiment_type)
+    plot_pfs_behav(cur_savedir,cur_savedir)
 
 
     %% 5. Output timestamps info for ephys

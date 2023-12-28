@@ -1,4 +1,4 @@
-function plot_pfs_behav(directoryname,figuredirectory, experiment_type)
+function plot_pfs_behav(directoryname,figuredirectory)
 %plot_pfs_behav(directoryname,figuredirectory)
 %
 %For each animal in a specified directory, this function
