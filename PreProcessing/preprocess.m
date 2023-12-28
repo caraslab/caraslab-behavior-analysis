@@ -53,7 +53,7 @@ for i = 1:numel(files)
         end
         
       %Create trialmat and dprimemat in preparation for psychometric fits  
-      if ~strcmp(experiment_type, '1IFC')
+      if ~(strcmp(experiment_type, '1IFC') || strcmp(experiment_type, 'synapse_1IFC'))
           output = create_mats(Session, output, j, files.folder, trial_subset, assert_five_amdepths);
       else
           output = create_1IFC_mats(Session, output, j, files.folder, trial_subset, assert_five_amdepths);
@@ -332,19 +332,21 @@ function output = create_1IFC_mats(Session, output, j, output_dir, trial_subset,
     %-------------------------------
     %Initialize trial matrix
     trialmat = [];
-
+    
+    struct_fields = fieldnames(Session(j).Data);
+    
     %Stimuli (AM depth in proportion)
-    stim = [Session(j).Data.AMDepth]';
+    stim = [Session(j).Data.(struct_fields{contains(struct_fields, 'AMDepth')})]';
 
     %Responses (coded via bitmask in Info.Bits)
-    resp = [Session(j).Data.ResponseCode]';
+    resp = [Session(j).Data.(struct_fields{contains(struct_fields, 'ResponseCode')})]';
 
     %Trial type (0 = GO; 1 = NOGO)
-    ttype = [Session(j).Data.TrialType]';
+    ttype = [Session(j).Data.(struct_fields{contains(struct_fields, 'TrialType')})]';
 
     %Remove reminder trials if they exist
-    if isfield(Session(j).Data, 'Reminder')
-        not_rmind = ~logical([Session(j).Data.Reminder]');
+    if contains(struct_fields, 'Reminder')
+        not_rmind = ~logical([Session(j).Data.(struct_fields{contains(struct_fields, 'Reminder')})]');
     else
         not_rmind = logical(ones(length(ttype), 1));
     end
@@ -399,7 +401,7 @@ function output = create_1IFC_mats(Session, output, j, output_dir, trial_subset,
     % Subset trials (optional)
     if ~isnan(trial_subset)
         am_ind = find(ttype == 0);
-        go_trialid = [Session(j).Data(am_ind).TrialID]';
+        go_trialid = [Session(j).Data(am_ind).(struct_fields{contains(struct_fields, 'TrialID')})]';
 
         if trial_subset(2) == Inf
             last_go_trial = length(go_trialid);
@@ -419,7 +421,7 @@ function output = create_1IFC_mats(Session, output, j, output_dir, trial_subset,
             last_trial = good_go_trials(2);
         end
 
-        good_trials = [Session(j).Data(first_trial:last_trial).TrialID]';
+        good_trials = [Session(j).Data(first_trial:last_trial).(struct_fields{contains(struct_fields, 'TrialID')})]';
 
         stim = stim(good_trials);
         resp = resp(good_trials);
@@ -530,7 +532,8 @@ function output = create_1IFC_mats(Session, output, j, output_dir, trial_subset,
     %Convert to z score
     % z_fa = sqrt(2)*erfinv(2*fa_rate-1);
 
-    % MML edit:  Is this the same as norminv? Yes, it is.
+    % MML edit:  Same as norminv. Use line above if Toolbox is not
+    % installed
     z_fa = norminv(adjusted_fa_rate);
 
     %Append to trialmat

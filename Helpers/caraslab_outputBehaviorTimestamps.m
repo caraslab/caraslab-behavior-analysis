@@ -532,6 +532,180 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 Info = cur_session.Info;
                 save(ePsychMetadata_filename, 'Info', '-v7.3');
             end
-        end
+            
+        case 'synapse_1IFC'
+            % File matching to ephys info
+            for ephys_folder_idx = 1:numel(ephysfolders)
+                cur_path.name = ephysfolders{ephys_folder_idx};
+                cur_savedir = fullfile(Savedir, cur_path.name);
+
+                %Load in info file
+                % Catch error if -mat file is not found
+                try
+                    load(fullfile(cur_savedir, [cur_path.name '.info']), '-mat');
+                catch ME
+                    if strcmp(ME.identifier, 'MATLAB:load:couldNotReadFile')
+                        fprintf('\n-mat file not found\n')
+                        continue
+                    else
+                        fprintf(ME.identifier)
+                        fprintf(ME.message)
+                        continue
+                    end
+                end
+
+                % In case this folder is still absent
+                mkdir(fullfile(cur_savedir, 'CSV files'));
+
+                % Match current folder with behavioral session by blockname
+                % TODO: Add this information to ePsych when saving files
+
+                folder_block = epData.info.blockname;
+                cur_session = [];
+                found_session_flag = 0;
+                for session_idx=1:numel(Session)
+
+                    try
+                        session_block = Session(session_idx).Info.ephys.block;
+                    catch ME
+                        if strcmp(ME.message, 'Reference to non-existent field ''ephys''.')
+                            % This error appears when the file used for behavior is
+                            % the recovered file from matlab crash files
+                            % Variables have different names
+                            session_block = Session(session_idx).Info.Subject.ephys.block;
+
+                        else
+                            rethrow(ME);
+                        end
+                    end
+
+                    if strcmp(folder_block, session_block)
+                        cur_session = Session(session_idx);
+                        found_session_flag = 1;
+                        break
+                    end
+                end
+                if ~found_session_flag
+                    continue
+                end
+
+                
+                % Skip empty Session
+                if numel(cur_session.Data) == 1
+                    continue
+                end
+                subj_id = cur_session.Info.Name;
+
+                session_id = epData.info.blockname;
+
+                %% Output spout onset-offset timestamps
+                nosepoke_onsets = epData.epocs.CPK_.onset;
+                nosepoke_offsets = epData.epocs.CPK_.offset;
+
+                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                    [subj_id '_' session_id '_nosePokeTimestamps.csv']), 'w');
+
+                header = {'Subj_id', 'Session_id', 'Nosepoke_onset', 'Nosepoke_offset'};
+                fprintf(fileID,'%s,%s,%s,%s\n', header{:});
+                nrows = length(nosepoke_onsets);
+                for idx = 1:nrows
+                    output_cell = {subj_id, session_id, nosepoke_onsets(idx), nosepoke_offsets(idx)};
+
+                    fprintf(fileID,'%s,%s,%f,%f\n', output_cell{:});
+                end
+                fclose(fileID);
+
+                ltrough_onsets = epData.epocs.LTR_.onset;
+                ltrough_offsets = epData.epocs.LTR_.offset;
+
+                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                    [subj_id '_' session_id '_leftTroughTimestamps.csv']), 'w');
+
+                header = {'Subj_id', 'Session_id', 'LTrough_onset', 'LTrough_offset'};
+                fprintf(fileID,'%s,%s,%s,%s\n', header{:});
+                nrows = length(ltrough_onsets);
+                for idx = 1:nrows
+                    output_cell = {subj_id, session_id, ltrough_onsets(idx), ltrough_offsets(idx)};
+
+                    fprintf(fileID,'%s,%s,%f,%f\n', output_cell{:});
+                end
+                fclose(fileID);
+
+                rtrough_onsets = epData.epocs.RTR_.onset;
+                rtrough_offsets = epData.epocs.RTR_.offset;
+
+                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                    [subj_id '_' session_id '_rightTroughTimestamps.csv']), 'w');
+
+                header = {'Subj_id', 'Session_id', 'RTrough_onset', 'RTrough_offset'};
+                fprintf(fileID,'%s,%s,%s,%s\n', header{:});
+                nrows = length(rtrough_onsets);
+                for idx = 1:nrows
+                    output_cell = {subj_id, session_id, rtrough_onsets(idx), rtrough_offsets(idx)};
+
+                    fprintf(fileID,'%s,%s,%f,%f\n', output_cell{:});
+                end
+                fclose(fileID);
+
+                camFrame_onsets = epData.epocs.Cam1.onset;
+                camFrame_number = epData.epocs.Cam1.data;
+                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                    [subj_id '_' session_id '_cameraTimestamps.csv']), 'w');
+
+                header = {'Subj_id', 'Session_id', 'CameraFrame_onset', 'CameraFrame_number'};
+                fprintf(fileID,'%s,%s,%s,%s\n', header{:});
+                nrows = length(camFrame_onsets);
+                for idx = 1:nrows
+                    output_cell = {subj_id, session_id, camFrame_onsets(idx), camFrame_number(idx)};
+
+                    fprintf(fileID,'%s,%s,%f,%f\n', output_cell{:});
+                end
+                fclose(fileID);
+
+                %% Output trial parameters
+                % Combine the ephys-timelocked timestamps with the 
+                % session info from ePsych; also translate the response code bitmask
+                session_data = struct2table(cur_session.Data);
+                % 
+                % % Sometimes the recording ends before a trial is completed and the offset 
+                % % value will be Inf. I'll add this checkpoint here to account for that
+                % try
+                %     temp_offset = epData.epocs.TTyp.offset;
+                %     offset_inf = isinf(temp_offset);
+                %     session_data.Trial_onset = epData.epocs.TTyp.onset(~offset_inf);
+                %     session_data.Trial_offset = epData.epocs.TTyp.offset(~offset_inf);
+                % catch ME
+                %     % Sometimes the above doesn't work. Not sure why but epData ends up
+                %     % with 1 more element than cur_session. Let's cut the last one for
+                %     % now
+                %     if strcmp(ME.identifier, 'MATLAB:table:RowDimensionMismatch')
+                %         session_data.Trial_onset = epData.epocs.TTyp.onset(1:size(session_data,1));
+                %         session_data.Trial_offset = epData.epocs.TTyp.offset(1:size(session_data,1));
+                %     end
+                % end
+
+                session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
+                session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
+                % Unmask the bitmask
+                response_code_bits = cur_session.Info.Bits;
+                session_data.Hit = session_data.ResponseCode == response_code_bits.Rtrough_hit;
+                session_data.Miss = session_data.ResponseCode == response_code_bits.Rtrough_miss;
+                session_data.RTimeout = session_data.ResponseCode == response_code_bits.Rtrough_timeout;
+                session_data.CR = session_data.ResponseCode == response_code_bits.Ltrough_hit;
+                session_data.FA = session_data.ResponseCode == response_code_bits.Ltrough_miss;
+                session_data.LTimeout = session_data.ResponseCode == response_code_bits.Ltrough_timeout;
+                
+                writetable(session_data, fullfile(cur_savedir, 'CSV files', ...
+                    [subj_id '_' session_id '_trialInfo.csv']));
+                
+                % Also save a copy of trialInfo in Behaviordir
+                writetable(session_data, fullfile(Behaviordir, ...
+                    [subj_id '_' session_id '_trialInfo.csv']));
+                
+                % Output the entire ePsych Info field as metadata
+                Info = cur_session.Info;
+                save(fullfile(cur_savedir, 'CSV files', ...
+                    [subj_id '_' session_id '_ePsychMetadata']), 'Info', '-v7.3');
+    end
 end
 
