@@ -568,7 +568,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     try
                         session_block = Session(session_idx).Info.ephys.block;
                     catch ME
-                        if strcmp(ME.message, 'Reference to non-existent field ''ephys''.')
+                        if strcmp(ME.identifier, 'MATLAB:nonExistentField')
                             % This error appears when the file used for behavior is
                             % the recovered file from matlab crash files
                             % Variables have different names
@@ -666,23 +666,23 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 % Combine the ephys-timelocked timestamps with the 
                 % session info from ePsych; also translate the response code bitmask
                 session_data = struct2table(cur_session.Data);
-                % 
-                % % Sometimes the recording ends before a trial is completed and the offset 
-                % % value will be Inf. I'll add this checkpoint here to account for that
-                % try
-                %     temp_offset = epData.epocs.TTyp.offset;
-                %     offset_inf = isinf(temp_offset);
-                %     session_data.Trial_onset = epData.epocs.TTyp.onset(~offset_inf);
-                %     session_data.Trial_offset = epData.epocs.TTyp.offset(~offset_inf);
-                % catch ME
-                %     % Sometimes the above doesn't work. Not sure why but epData ends up
-                %     % with 1 more element than cur_session. Let's cut the last one for
-                %     % now
-                %     if strcmp(ME.identifier, 'MATLAB:table:RowDimensionMismatch')
-                %         session_data.Trial_onset = epData.epocs.TTyp.onset(1:size(session_data,1));
-                %         session_data.Trial_offset = epData.epocs.TTyp.offset(1:size(session_data,1));
-                %     end
-                % end
+                
+                % Sometimes the recording ends before a trial is completed and the offset 
+                % value will be Inf. I'll add this checkpoint here to account for that
+                try
+                    temp_offset = epData.epocs.STTL.offset;
+                    offset_inf = isinf(temp_offset);
+                    session_data.Trial_onset = epData.epocs.STTL.onset(~offset_inf);
+                    session_data.Trial_offset = epData.epocs.STTL.offset(~offset_inf);
+                catch ME
+                    % Sometimes the above doesn't work. Not sure why but epData ends up
+                    % with 1 more element than cur_session. Let's cut the last one for
+                    % now
+                    if strcmp(ME.identifier, 'MATLAB:table:RowDimensionMismatch')
+                        session_data.Trial_onset = epData.epocs.STTL.onset(1:size(session_data,1));
+                        session_data.Trial_offset = epData.epocs.STTL.offset(1:size(session_data,1));
+                    end
+                end
 
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
                 session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
