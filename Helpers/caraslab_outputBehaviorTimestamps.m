@@ -18,7 +18,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
     fprintf('\nProcessing behavioral timestamps (spout and trial info)...\n')
 
     %List the files in the folder (each file = one session)
-    [files,fileIndex] = listFiles(Behaviordir,'*.mat');
+    [files,fileIndex] = listFiles(Behaviordir,'*allSessions.mat');
     files = files(fileIndex);
     ephysfolders = caraslab_lsdir(Savedir);
     ephysfolders = {ephysfolders.name};
@@ -566,7 +566,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 for session_idx=1:numel(Session)
 
                     try
-                        session_block = Session(session_idx).Info.ephys.block;
+                        session_block = Session(session_idx).Info.TDT.Subject.ephys.block;
                     catch ME
                         if strcmp(ME.identifier, 'MATLAB:nonExistentField')
                             % This error appears when the file used for behavior is
@@ -599,8 +599,17 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_id = epData.info.blockname;
 
                 %% Output spout onset-offset timestamps
-                nosepoke_onsets = epData.epocs.CPK_.onset;
-                nosepoke_offsets = epData.epocs.CPK_.offset;
+                if isfield(epData.epocs, 'CPK_')
+                    nosepoke_onsets = epData.epocs.CPK_.onset;
+                    nosepoke_offsets = epData.epocs.CPK_.offset;
+                elseif isfield(epData.epocs, 'NPK_')
+                    nosepoke_onsets = epData.epocs.NPK_.onset;
+                    nosepoke_offsets = epData.epocs.NPK_.offset;
+                else
+                    disp('Trough timestamps not found. Check tag ID')
+                    nosepoke_onsets = [];
+                    nosepoke_offsets = [];
+                end
 
                 fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
                     [subj_id '_' session_id '_nosePokeTimestamps.csv']), 'w');
@@ -614,10 +623,18 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     fprintf(fileID,'%s,%s,%f,%f\n', output_cell{:});
                 end
                 fclose(fileID);
-
-                ltrough_onsets = epData.epocs.LTR_.onset;
-                ltrough_offsets = epData.epocs.LTR_.offset;
-
+                
+                if isfield(epData.epocs, 'LTR_')
+                    ltrough_onsets = epData.epocs.LTR_.onset;
+                    ltrough_offsets = epData.epocs.LTR_.offset;
+                elseif isfield(epData.epocs, 'LPK_')
+                    ltrough_onsets = epData.epocs.LPK_.onset;
+                    ltrough_offsets = epData.epocs.LPK_.offset;
+                else
+                    disp('Trough timestamps not found. Check tag ID.')
+                    ltrough_onsets = [];
+                    ltrough_offsets = [];
+                end
                 fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
                     [subj_id '_' session_id '_leftTroughTimestamps.csv']), 'w');
 
@@ -631,8 +648,17 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 end
                 fclose(fileID);
 
-                rtrough_onsets = epData.epocs.RTR_.onset;
-                rtrough_offsets = epData.epocs.RTR_.offset;
+                if isfield(epData.epocs, 'RTR_')
+                    rtrough_onsets = epData.epocs.RTR_.onset;
+                    rtrough_offsets = epData.epocs.RTR_.offset;
+                elseif isfield(epData.epocs, 'RPK_')
+                    rtrough_onsets = epData.epocs.RPK_.onset;
+                    rtrough_offsets = epData.epocs.RPK_.offset;
+                else
+                    disp('Trough timestamps not found. Check tag ID')
+                    rtrough_onsets = [];
+                    rtrough_offsets = [];
+                end
 
                 fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
                     [subj_id '_' session_id '_rightTroughTimestamps.csv']), 'w');
@@ -670,10 +696,18 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 % Sometimes the recording ends before a trial is completed and the offset 
                 % value will be Inf. I'll add this checkpoint here to account for that
                 try
-                    temp_offset = epData.epocs.STTL.offset;
-                    offset_inf = isinf(temp_offset);
-                    session_data.Trial_onset = epData.epocs.STTL.onset(~offset_inf);
-                    session_data.Trial_offset = epData.epocs.STTL.offset(~offset_inf);
+                    if isfield(epData.epocs, 'STTL')
+                        temp_offset = epData.epocs.STTL.offset;
+                        offset_inf = isinf(temp_offset);
+                        session_data.Trial_onset = epData.epocs.STTL.onset(~offset_inf);
+                        session_data.Trial_offset = epData.epocs.STTL.offset(~offset_inf);
+                    elseif isfield(epData.epocs, 'STL_')
+                        temp_offset = epData.epocs.STL_.offset;
+                        offset_inf = isinf(temp_offset);
+                        session_data.Trial_onset = epData.epocs.STL_.onset(~offset_inf);
+                        session_data.Trial_offset = epData.epocs.STL_.offset(~offset_inf);
+                    end
+                    
                 catch ME
                     % Sometimes the above doesn't work. Not sure why but epData ends up
                     % with 1 more element than cur_session. Let's cut the last one for

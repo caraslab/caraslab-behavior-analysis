@@ -40,7 +40,7 @@ split_by_optoStim = 0;
 
 % If this function is run directly (behavior only)
 if nargin ==0
-    default_dir = '/mnt/CL_8TB_3/Matheus/1IFC pilot';
+    default_dir = '/mnt/CL_8TB_3/Matheus/VTA_FP_1IFC/TH-Cre_flex-GCaMP8m';
     Savedir = uigetdir(default_dir, 'Select save directory');
     Behaviordir = default_dir;
     experiment_type = '1IFC';
