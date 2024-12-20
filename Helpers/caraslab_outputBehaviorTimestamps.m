@@ -62,7 +62,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     load(fullfile(cur_savedir, [cur_path.name '.info']), '-mat');
                 catch ME
                     if strcmp(ME.identifier, 'MATLAB:load:couldNotReadFile')
-                        fprintf('\n-mat file not found\n')
+%                         fprintf('\n-mat file not found\n')
                         continue
                     else
                         fprintf(ME.identifier)
@@ -146,9 +146,27 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     if strcmp(ME.identifier, 'MATLAB:table:RowDimensionMismatch')
                         session_data.Trial_onset = epData.epocs.TTyp.onset(1:size(session_data,1));
                         session_data.Trial_offset = epData.epocs.TTyp.offset(1:size(session_data,1));
+                    
+                        % VERY SPECIAL CASE HANDLING
+                        % It has happened only twice in my 4 years as a postdoc
+                        % I noticed that the timestamps of those two recordings became
+                        % desynchronized between ePsych and the recording platform
+                        % (once with Synapse, another with Intan)
+                        % RPvds apparently sent a single phantom non-AM trial TTL causing a
+                        % drift of about 1 second, I think it coincides with the
+                        % moment that the AM depths are adjusted in the middle of a
+                        % trial. 
+                        % The code below detects this issue, issues a warning and 
+                        % corrects it by removing the phantom non-AM trial and
+                        % rechecking for drift
+
+                        % Detect the issue using the computer timestamps
+                        % They are not reliable but large discrepancies indicate an issue
+                        session_data = detect_ePsych_drift(session_data, epData, epData.info.blockname, recording_format);
                     end
                 end
-
+                
+                
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
                 session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
                 % Unmask the bitmask    
@@ -228,7 +246,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     load(fullfile(cur_savedir, [cur_path.name '.info']), '-mat');
                 catch ME
                     if strcmp(ME.identifier, 'MATLAB:load:couldNotReadFile')
-                        fprintf('\n-mat file not found\n')
+%                         fprintf('\n-mat file not found\n')
                         continue
                     else
                         fprintf(ME.identifier)
@@ -355,6 +373,24 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                             session_data.Trial_onset = temp_onset(1:min_trials);
                             session_data.Trial_offset = temp_offset(1:min_trials);
+                            
+                            
+                            % VERY SPECIAL CASE HANDLING
+                            % It has happened only twice in my 4 years as a postdoc
+                            % I noticed that the timestamps of those two recordings became
+                            % desynchronized between ePsych and the recording platform
+                            % (once with Synapse, another with Intan)
+                            % RPvds apparently sent a single phantom non-AM trial TTL causing a
+                            % drift of about 1 second, I think it coincides with the
+                            % moment that the AM depths are adjusted in the middle of a
+                            % trial. 
+                            % The code below detects this issue, issues a warning and 
+                            % corrects it by removing the phantom non-AM trial and
+                            % rechecking for drift
+
+                            % Detect the issue using the computer timestamps
+                            % They are not reliable but large discrepancies indicate an issue
+                            session_data = detect_ePsych_drift(session_data, epData, string(epData.info.blockname), recording_format);
                         end
                     end
                     % Unmask the bitmask    
@@ -545,7 +581,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     load(fullfile(cur_savedir, [cur_path.name '.info']), '-mat');
                 catch ME
                     if strcmp(ME.identifier, 'MATLAB:load:couldNotReadFile')
-                        fprintf('\n-mat file not found\n')
+%                         fprintf('\n-mat file not found\n')
                         continue
                     else
                         fprintf(ME.identifier)

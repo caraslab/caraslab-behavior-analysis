@@ -27,6 +27,10 @@ end
 [files,fileIndex] = listFiles(directoryname,'*allSessions.mat');
 files = files(fileIndex);
 
+if size(files, 1) > 1
+    error('Warning! There is an extra allSessions.mat file in the Behavior folder. Delete the incorrect one before proceeding')
+end
+
 %For each file...
 for i = 1:numel(files)
     
@@ -38,7 +42,7 @@ for i = 1:numel(files)
     filename=files(i).name;
     data_file=fullfile(directoryname, filename);
     load(data_file);
-    
+
     %For each session...
     for j = 1:numel(Session)
         % Skip empty training sessions
