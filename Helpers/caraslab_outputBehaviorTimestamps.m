@@ -364,7 +364,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     catch ME
                         if strcmp(ME.identifier, 'MATLAB:table:RowDimensionMismatch')
                             fprintf('Trial number mismatch between ePsych and intan system for: %s\n', cur_path.name)
-                            fprintf('Find minimum trial count between the two and use that number');
+                            fprintf('Attempting to fix by removing last trial and checking for drift...\n')
 
                             min_trials = min(height(session_data), length(all_trial_events_timestamps(trial_onset_events)));
 
@@ -376,21 +376,25 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                             
                             
                             % VERY SPECIAL CASE HANDLING
-                            % It has happened only twice in my 4 years as a postdoc
-                            % I noticed that the timestamps of those two recordings became
+                            % I noticed that the timestamps of some recordings became
                             % desynchronized between ePsych and the recording platform
-                            % (once with Synapse, another with Intan)
-                            % RPvds apparently sent a single phantom non-AM trial TTL causing a
-                            % drift of about 1 second, I think it coincides with the
-                            % moment that the AM depths are adjusted in the middle of a
-                            % trial. 
+                            % RPvds sent a single phantom non-AM trial TTL causing a
+                            % drift of about 1 second at the moment that the 
+                            % AM depths were adjusted in the middle of a trial. 
                             % The code below detects this issue, issues a warning and 
                             % corrects it by removing the phantom non-AM trial and
                             % rechecking for drift
 
                             % Detect the issue using the computer timestamps
                             % They are not reliable but large discrepancies indicate an issue
-                            session_data = detect_ePsych_drift(session_data, epData, string(epData.info.blockname), recording_format);
+                            iterations = 0;
+                            [session_data, iterations] = detect_ePsych_drift(session_data, epData, string(epData.info.blockname), recording_format);
+                            
+                            if iterations == 0
+                                fprintf('Mismatch was fixed after last session removal!\n')
+                            else
+                                fprintf('Mismatch was fixed after drift detection!\n')
+                            end
                         end
                     end
                     % Unmask the bitmask    

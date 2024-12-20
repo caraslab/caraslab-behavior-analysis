@@ -1,13 +1,10 @@
-function [session_data] = detect_ePsych_drift(session_data, epData, session_name, recording_format, iterations)
+function [session_data, iterations] = detect_ePsych_drift(session_data, epData, session_name, recording_format, iterations)
     % VERY SPECIAL CASE HANDLING
-    % It has happened only twice in my 4 years as a postdoc
-    % I noticed that the timestamps of those two recordings became
+    % I noticed that the timestamps of some recordings became
     % desynchronized between ePsych and the recording platform
-    % (once with Synapse, another with Intan)
-    % RPvds apparently sent a single phantom non-AM trial TTL causing a
-    % drift of about 1 second, I think it coincides with the
-    % moment that the AM depths are adjusted in the middle of a
-    % trial. 
+    % RPvds sent a single phantom non-AM trial TTL causing a
+    % drift of about 1 second at the moment that the 
+    % AM depths were adjusted in the middle of a trial. 
     % The code below detects this issue, issues a warning and 
     % corrects it by removing the phantom non-AM trial and
     % rechecking for drift
