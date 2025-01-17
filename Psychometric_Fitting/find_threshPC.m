@@ -8,6 +8,12 @@ function [options,results,zFA] = find_threshPC(data_to_fit,options)
 %Input variables:
 %   data_to_fit: M x 3 matrix arranged as [stimulus value, n_yes, n_trials]
 %                        (stimulus values are already in dB re: 100% depth)
+%               Note that the first row in data_to_fit is assumed to
+%               contain data representing catch trials.
+%                   data_to_fit(1,1) = 0; % or whatever the catch trial
+%                                         % 'stimulus' value is
+%                   data_to_fit(1,2) = nFA; % number of false alarm trials
+%                   data_to_fit(1,3) = nCatchTrials; % number of catch trials
 %
 %   options: structure given by setOptions function for fitting
 %
@@ -17,8 +23,10 @@ function [options,results,zFA] = find_threshPC(data_to_fit,options)
 %
 %Written by ML Caras Dec 5 2016
 
+% DJS Jan 17, 2025: updated comments
+
 n_fa = data_to_fit(1,2);
-n_safe = data_to_fit(1,3);
+n_safe = data_to_fit(1,3); % DS: This parameter is called `n_safe`, but I assume it is actually the number of catch trials, not correct rejects
 
 % MML edit
 % zFA = sqrt(2)*erfinv(2*(n_fa/n_safe)-1);
