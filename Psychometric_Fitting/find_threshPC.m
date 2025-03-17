@@ -33,7 +33,7 @@ n_safe = data_to_fit(1,3); % DS: This parameter is called `n_safe`, but I assume
 zFA = norminv(n_fa/n_safe);
 
 zThresh = options.dprimeThresh+zFA;
-options.threshPC = (erf(zThresh/sqrt(2))+1)/2;  % MML: not sure what this is
+options.threshPC = (erf(zThresh/sqrt(2))+1)/2;  % MML: not sure what this is; DS: This is used by psignifit and is the percent correct at the dprime threshold (typically d' == 1)
 
 %Fit the data
 results = psignifit(data_to_fit,options);
