@@ -163,6 +163,7 @@ for which_file = 1:length(file_index)
     load(savename);
     block_id = {};
     thresholds = {};
+    trial_blocks = {};
     optoStims = {};
     for session_idx=1:numel(Session)
         try
@@ -191,20 +192,29 @@ for which_file = 1:length(file_index)
         block_id{end+1} = cur_block_id;
         thresholds{end+1} = cur_threshold;
                 
+        % Check for trial block field
+        if isfield(Session(session_idx).Info, 'Trial_block')
+            trial_block = Session(session_idx).Info.Trial_block;
+            trial_blocks{end+1} = trial_block;
+        end
+
         % Check for Optostim field
         if isfield(Session(session_idx).Info, 'Optostim')
             optoStim = Session(session_idx).Info.Optostim;
             optoStims{end+1} = optoStim;
         end
-     
     end
-    if isempty(optoStims)
-        output_table = cell2table(horzcat(block_id', thresholds'));
 
-        output_table.Properties.VariableNames = {'Block_id' 'Threshold'};
-    else
-        output_table = cell2table(horzcat(block_id', thresholds', optoStims'));
-        output_table.Properties.VariableNames = {'Block_id' 'Threshold' 'Optostim'};
+    output_table = cell2table(horzcat(block_id', thresholds'));
+
+    output_table.Properties.VariableNames = {'Block_id' 'Threshold'};
+
+    if ~isempty(trial_blocks)
+        output_table.Trial_blocks = cell2mat(trial_blocks)';
+    end
+
+    if ~isempty(optoStims)
+        output_table.Optostim = cell2mat(optoStims)';
     end
 
     writetable(output_table, fullfile([savename '_psychThreshold.csv']));

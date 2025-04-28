@@ -1,4 +1,4 @@
-function caraslab_behav_pipeline(Savedir, Behaviordir, experiment_type, assert_five_amdepths, trial_subset)
+function caraslab_behav_pipeline(Savedir, Behaviordir, varargin)
 
 % caraslab_behav_pipeline.m
 % This pipeline takes ePsych .mat behavioral files, combines and analyzes them and
@@ -23,31 +23,50 @@ function caraslab_behav_pipeline(Savedir, Behaviordir, experiment_type, assert_f
 
 % experiment_type: optional: 'synapse', 'intan', 'optoBehavior', '1IFC', 'synapse_1IFC'
 
-% If no recording type given
-if nargin < 3
-    experiment_type = 'none';
+% Defaults
+split_by_optostim = 0;
+universal_nogo = 1;
+experiment_type = 'none';
+assert_five_amdepths = 0;
+trial_subset = NaN;
+n_trial_blocks = 0;
+
+% Loading optional arguments
+while ~isempty(varargin)
+    switch lower(varargin{1})
+        case 'split_by_optostim'
+            split_by_optostim = varargin{2};
+        case 'universal_nogo'
+            universal_nogo = varargin{2};
+        case 'experiment_type'
+            experiment_type = varargin{2};
+        case 'assert_five_amdepths'
+            assert_five_amdepths = varargin{2};
+        case 'trial_subset'
+            trial_subset = varargin{2};
+        case 'n_trial_blocks'
+            n_trial_blocks = varargin{2};
+      otherwise
+          error(['Unexpected parameter: ' varargin{1}])
+    end
+    varargin(1:2) = [];
 end
 
-if nargin < 4
-    assert_five_amdepths = 0;
-end
-
-if nargin < 5
-    trial_subset = NaN;
-end
-
-split_by_optoStim = 0;
 
 % If this function is run directly (behavior only)
 if nargin ==0
-    default_dir = '/mnt/CL_8TB_3/Matheus/VTA_FP_1IFC/TH-Cre_flex-GCaMP8m';
+    default_dir = '/mnt/CL_8TB_3/Matheus/Ephys recordings/OFC-GtACR2_ACx-Electrode/matlab_data_files';
+    % default_dir = '/mnt/CL_8TB_3/Matheus/Ephys recordings/OFC-GtACR2_ACx-Electrode/matlab_data_files';
+
     Savedir = uigetdir(default_dir, 'Select save directory');
     Behaviordir = default_dir;
-    experiment_type = '1IFC';
-    split_by_optoStim = 0;
+    experiment_type = 'optoBehavior';
+    n_trial_blocks = 25;
+    split_by_optostim = 1;
+    universal_nogo = 0;
 end
 
-
+ 
 
 %Prompt user to select folders
 % uigetfile_n_dir copied from here:
@@ -87,14 +106,18 @@ for i = 1:numel(datafolders)
     %each animal. Thus, in the end, each animal will have two behavioral files
     %associated with it. This approach makes it easier to analyze different
     %stages of learning separately.
-
     caraslab_combinefiles(cur_sourcedir,cur_savedir)
 
-    %% 2.1 Split opto trials into separate Session entries
-    if split_by_optoStim
-        caraslab_split_opto_trials(cur_savedir)
+    %% 2.1 Split blocks of n AM trials into separate Session entries
+    if n_trial_blocks > 0
+        caraslab_split_trial_blocks(cur_savedir, n_trial_blocks)
     end
-
+    
+    %% 2.2 Split opto trials into separate Session entries
+    if split_by_optostim
+        caraslab_split_opto_trials(cur_savedir, universal_nogo)
+    end
+    
     %% 3. CREATE TRIALMAT AND DPRIMEMAT IN PREPARATION FOR PSYCHOMETRIC FITTING
     %This function goes through each datafile in a directory, and calculates
     %hits, misses and dprime values for each behavioral session. Aggregate data
@@ -135,6 +158,3 @@ for i = 1:numel(datafolders)
         caraslab_outputBehaviorTimestamps(cur_savedir, Savedir, experiment_type)
     end
 end
-
- 
-

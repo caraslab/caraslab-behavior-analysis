@@ -72,7 +72,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 end
 
                 % In case this folder is still absent
-                mkdir(fullfile(cur_savedir, 'CSV files'));
+                mkdir(fullfile(cur_savedir, 'Info files'));
 
                 % Match current folder with behavioral session by blockname
                 folder_block = epData.info.blockname;
@@ -115,7 +115,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 spout_onsets = epData.epocs.Spou.onset;
                 spout_offsets = epData.epocs.Spou.offset;
 
-                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_spoutTimestamps.csv']), 'w');
 
                 header = {'Subj_id', 'Session_id', 'Spout_onset', 'Spout_offset'};
@@ -176,7 +176,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_data.CR = bitget(session_data.ResponseCode, response_code_bits.cr);
                 session_data.FA = bitget(session_data.ResponseCode, response_code_bits.fa);
 
-                writetable(session_data, fullfile(cur_savedir, 'CSV files', ...
+                writetable(session_data, fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_trialInfo.csv']));
                 
                 % Also save a copy of trialInfo in Behaviordir
@@ -185,7 +185,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 
                 % Output the entire ePsych Info field as metadata
                 Info = cur_session.Info;
-                save(fullfile(cur_savedir, 'CSV files', ...
+                save(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_ePsychMetadata']), 'Info', '-v7.3');
             end
 
@@ -266,7 +266,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 end
 
                 % In case this folder is still absent
-                mkdir(fullfile(cur_savedir, 'CSV files'));
+                mkdir(fullfile(cur_savedir, 'Info files'));
 
                 subj_id = cur_session.Info.Name;
 
@@ -300,7 +300,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                         spout_onset_timestamps = spout_onset_timestamps(1:end-1);
                     end
 
-                    fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                    fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                         [subj_id '_' session_id '_spoutTimestamps.csv']), 'w');
 
                     header = {'Subj_id', 'Session_id', 'Spout_onset', 'Spout_offset'};
@@ -328,7 +328,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 sound_onset_timestamps = all_sound_timestamps(sound_onset_events);
                 sound_offset_timestamps = all_sound_timestamps(sound_offset_events);
 
-                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_AMsoundTimestamps.csv']), 'w');
 
                 header = {'Subj_id', 'Session_id', 'Sound_onset', 'Sound_offset'};
@@ -442,7 +442,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
                 session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
 
-                writetable(session_data, fullfile(cur_savedir, 'CSV files', ...
+                writetable(session_data, fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_trialInfo.csv']));
                 
                 % Also save a copy of trialInfo in Behaviordir
@@ -451,7 +451,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 
                 % Output the entire ePsych Info field as metadata
                 Info = cur_session.Info;
-                save(fullfile(cur_savedir, 'CSV files', ...
+                save(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_ePsychMetadata']), 'Info', '-v7.3');
             end
 
@@ -595,7 +595,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 end
 
                 % In case this folder is still absent
-                mkdir(fullfile(cur_savedir, 'CSV files'));
+                mkdir(fullfile(cur_savedir, 'Info files'));
 
                 % Match current folder with behavioral session by blockname
                 % TODO: Add this information to ePsych when saving files
@@ -651,7 +651,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     nosepoke_offsets = [];
                 end
 
-                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_nosePokeTimestamps.csv']), 'w');
 
                 header = {'Subj_id', 'Session_id', 'Nosepoke_onset', 'Nosepoke_offset'};
@@ -675,7 +675,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     ltrough_onsets = [];
                     ltrough_offsets = [];
                 end
-                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_leftTroughTimestamps.csv']), 'w');
 
                 header = {'Subj_id', 'Session_id', 'LTrough_onset', 'LTrough_offset'};
@@ -700,7 +700,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     rtrough_offsets = [];
                 end
 
-                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_rightTroughTimestamps.csv']), 'w');
 
                 header = {'Subj_id', 'Session_id', 'RTrough_onset', 'RTrough_offset'};
@@ -715,7 +715,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                 camFrame_onsets = epData.epocs.Cam1.onset;
                 camFrame_number = epData.epocs.Cam1.data;
-                fileID = fopen(fullfile(cur_savedir, 'CSV files', ...
+                fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_cameraTimestamps.csv']), 'w');
 
                 header = {'Subj_id', 'Session_id', 'CameraFrame_onset', 'CameraFrame_number'};
@@ -769,7 +769,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_data.FA = session_data.ResponseCode == response_code_bits.Ltrough_miss;
                 session_data.LTimeout = session_data.ResponseCode == response_code_bits.Ltrough_timeout;
                 
-                writetable(session_data, fullfile(cur_savedir, 'CSV files', ...
+                writetable(session_data, fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_trialInfo.csv']));
                 
                 % Also save a copy of trialInfo in Behaviordir
@@ -778,7 +778,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 
                 % Output the entire ePsych Info field as metadata
                 Info = cur_session.Info;
-                save(fullfile(cur_savedir, 'CSV files', ...
+                save(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_ePsychMetadata']), 'Info', '-v7.3');
     end
 end

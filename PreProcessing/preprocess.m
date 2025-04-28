@@ -122,7 +122,7 @@ function output = create_mats(Session, output, j, output_dir, trial_subset, asse
         end
     end
     
-    % Count number of trials _ orig
+    % Count number of trials
     [n_trials, unique_stim] = hist(stim,unique(stim));
     n_trials = [n_trials' unique_stim]; 
     good_stim = n_trials(n_trials(:,1) >= 5, 2);
