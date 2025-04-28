@@ -21,7 +21,7 @@ function caraslab_behav_pipeline(Savedir, Behaviordir, varargin)
 %   into folders named: 
 %   shock_training, psych_testing, pre_passive, post_passive
 
-% experiment_type: optional: 'synapse', 'intan', 'optoBehavior', '1IFC', 'synapse_1IFC'
+% experiment_type: optional: 'none', 'synapse', 'intan', 'optoBehavior', '1IFC', 'synapse_1IFC'
 
 % Defaults
 split_by_optostim = 0;
@@ -53,21 +53,22 @@ while ~isempty(varargin)
 end
 
 
-% If this function is run directly (behavior only)
+%%  If this function is run directly (behavior only; no ephys data will be analyzed)
 if nargin ==0
     default_dir = '/mnt/CL_8TB_3/Matheus/Ephys recordings/OFC-GtACR2_ACx-Electrode/matlab_data_files';
     % default_dir = '/mnt/CL_8TB_3/Matheus/Ephys recordings/OFC-GtACR2_ACx-Electrode/matlab_data_files';
 
     Savedir = uigetdir(default_dir, 'Select save directory');
     Behaviordir = default_dir;
-    experiment_type = 'optoBehavior';
-    n_trial_blocks = 25;
-    split_by_optostim = 1;
-    universal_nogo = 0;
+
+    experiment_type = 'optoBehavior';  % none or optoBehavior
+
+    % Tweak these
+    n_trial_blocks = 25;  % no splitting: 0
+    split_by_optostim = 1;  % no splitting: 0
+    universal_nogo = 0;  % Only relevant if splitting by optostim
 end
-
- 
-
+%%
 %Prompt user to select folders
 % uigetfile_n_dir copied from here:
 % https://www.mathworks.com/matlabcentral/fileexchange/32555-uigetfile_n_dir-select-multiple-files-and-directories
