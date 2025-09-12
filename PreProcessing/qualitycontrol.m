@@ -22,14 +22,15 @@ files = files(fileIndex);
 for which_file = 1:numel(files)
     
     %Start fresh
-    clear animal_data Session output names dates
+    clear animal_data behav_sessions output names dates
     status = 'good';
     
     %Load file
     filename = files(which_file).name;
-    load(fullfile(directoryname,filename))
+    behav_files = load(fullfile(directoryname,filename));
+    behav_sessions = behav_files.Session;
     
-    check1 = numel(Session);
+    check1 = numel(behav_sessions);
     
     %Are there the correct number of sessions?
     if check1 < n
@@ -38,8 +39,8 @@ for which_file = 1:numel(files)
     end
     
     %Are the dates in the correct order?
-    for i = 1:numel(Session)
-        dates{i} = Session(i).Info.Date;
+    for i = 1:numel(behav_sessions)
+        dates{i} = behav_sessions(i).Info.Date;
     end
     
     orig = datetime(dates)';
@@ -55,8 +56,8 @@ for which_file = 1:numel(files)
     %Is the data from each session from the same animal? (That is-- did you
     %accidentally combine sessions from different animals into a single
     %file?)
-    for i = 1:numel(Session)
-        names{i} = Session(i).Info.Name;
+    for i = 1:numel(behav_sessions)
+        names{i} = behav_sessions(i).Info.Name;
     end
     
     for i = 2:numel(names)
@@ -71,7 +72,7 @@ for which_file = 1:numel(files)
     
     %Does the ID in the file name match the ID in the data? (That is-- is
     %the data attributed to the correct animal?)
-    name1 = char(regexp(Session(1).Info.Name,'\d\d\d\d\d\d','match'));
+    name1 = char(regexp(behav_sessions(1).Info.Name,'\d\d\d\d\d\d','match'));
     name2 = char(regexp(filename,'\d\d\d\d\d\d','match'));
     
     check3 = strcmp(name1,name2);

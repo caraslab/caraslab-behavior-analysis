@@ -28,17 +28,20 @@ subplot_cols = 6; %subplot index too small
 %For each file...
 for which_file = 1:length(file_index)
     
+    %Start fresh and avoids conflict with OpenEphys pipeline
+    clear behav_sessions
 
     %Load file
     filename = file_list(file_index(which_file)).name;
-    load(fullfile(directoryname, filename));
+    behav_files = load(fullfile(directoryname, filename));
+    behav_sessions = behav_files.behav_sessions;
+    output = behav_files.output;
     
     % Skip files without Info.Bits field which indicates frequency tuning
     % protocol was used
-    if ~isfield(Session(1).Info,'Bits')
+    if ~isfield(behav_sessions(1).Info,'Bits')
         continue
     end
-    
     
     %Remove fitdata field to start fresh
     if isfield(output,'fitdata')
@@ -48,17 +51,15 @@ for which_file = 1:length(file_index)
     %Set value of dprime that we define as threshold
     options.dprimeThresh = 1;
     
-    
     %Clear plots and handle vectors
     f1 = myplot;
     f2 = myplot;
     handles_f1 = [];
     handles_f2 = [];
     
-    
     %For each session...
     for which_session = 1:numel(output)
-        
+
         clear data_to_fit;
         
         %Pull out data from a single session
@@ -116,9 +117,6 @@ for which_file = 1:length(file_index)
         d.slope = slope; %scaled
         
         output(which_session).fitdata = d;
-        
-
-        
     end
     
     
@@ -165,14 +163,14 @@ for which_file = 1:length(file_index)
     thresholds = {};
     trial_blocks = {};
     optoStims = {};
-    for session_idx=1:numel(Session)
+    for session_idx=1:numel(behav_sessions)
         try
             try
-                cur_block_id = datestr(datetime(Session(session_idx).Info.StartTime), 'yymmdd-HHMMSS');
+                cur_block_id = datestr(datetime(behav_sessions(session_idx).Info.StartTime), 'yymmdd-HHMMSS');
             catch ME
                 if strcmp(ME.identifier, 'MATLAB:datetime:UnrecognizedDateStringSuggestLocale')
                     % Some sessions have weird format because they didn't save properly
-                    cur_block_id = [datestr(datenum(Session(session_idx).Info.StartDate), 'yymmdd') '-' Session(session_idx).Info.StartTime];
+                    cur_block_id = [datestr(datenum(behav_sessions(session_idx).Info.StartDate), 'yymmdd') '-' behav_sessions(session_idx).Info.StartTime];
 
                 else
                     throw(ME)
@@ -193,14 +191,14 @@ for which_file = 1:length(file_index)
         thresholds{end+1} = cur_threshold;
                 
         % Check for trial block field
-        if isfield(Session(session_idx).Info, 'Trial_block')
-            trial_block = Session(session_idx).Info.Trial_block;
+        if isfield(behav_sessions(session_idx).Info, 'Trial_block')
+            trial_block = behav_sessions(session_idx).Info.Trial_block;
             trial_blocks{end+1} = trial_block;
         end
 
         % Check for Optostim field
-        if isfield(Session(session_idx).Info, 'Optostim')
-            optoStim = Session(session_idx).Info.Optostim;
+        if isfield(behav_sessions(session_idx).Info, 'Optostim')
+            optoStim = behav_sessions(session_idx).Info.Optostim;
             optoStims{end+1} = optoStim;
         end
     end

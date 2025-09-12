@@ -55,10 +55,14 @@ end
 
 %%  If this function is run directly (behavior only; no ephys data will be analyzed)
 if nargin ==0
+    % default_dir = '/mnt/CL_4TB_2/Matt/OFC_PL_recording/matlab_data_files';
     default_dir = '/mnt/CL_8TB_3/Matheus/Ephys recordings/OFC-GtACR2_ACx-Electrode/matlab_data_files';
-    % default_dir = '/mnt/CL_8TB_3/Matheus/Ephys recordings/OFC-GtACR2_ACx-Electrode/matlab_data_files';
 
     Savedir = uigetdir(default_dir, 'Select save directory');
+    if Savedir == 0
+        warning('Save folder was not selected. Aborting...')
+        return
+    end
     Behaviordir = default_dir;
 
     experiment_type = 'optoBehavior';  % none or optoBehavior
@@ -72,7 +76,11 @@ end
 %Prompt user to select folders
 % uigetfile_n_dir copied from here:
 % https://www.mathworks.com/matlabcentral/fileexchange/32555-uigetfile_n_dir-select-multiple-files-and-directories
-datafolders_names = uigetfile_n_dir(Behaviordir,'Select data directory');  % 
+datafolders_names = uigetfile_n_dir(Behaviordir,'Select data directory');  
+if isempty(datafolders_names)
+    warning('Data folders not selected. Aborting...')
+    return
+end
 datafolders = {};
 for i=1:length(datafolders_names)
     [~, datafolders{end+1}, ~] = fileparts(datafolders_names{i});

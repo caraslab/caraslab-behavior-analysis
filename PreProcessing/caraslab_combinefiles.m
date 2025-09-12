@@ -8,8 +8,8 @@ function caraslab_combinefiles(directoryname,savepath)
 %
 %Written by ML Caras Jan 29, 2018
 
-%Start fresh
-clear Session
+%Start fresh and avoids conflict with OpenEphys pipeline
+clear behav_sessions
 
 
 %List the files in the folder (each file = one session)
@@ -47,13 +47,13 @@ for k = 1:numel(sortedfiles)
 
     %Load data
     filename=sortedfiles(k).name;
-    data_file=[directoryname,'/',filename];
+    data_file=fullfile(directoryname, filename);
     temp = load(data_file);
 
     %Save data to data structure
     try
-        Session(k).Data = temp.Data;
-        Session(k).Info = temp.Info;
+        behav_sessions(k).Data = temp.Data;
+        behav_sessions(k).Info = temp.Info;
     catch ME
         if strcmp(ME.identifier, 'MATLAB:nonExistentField')
             try
@@ -62,25 +62,25 @@ for k = 1:numel(sortedfiles)
                 % incompletely. You need to manually search for this file in
                 % the MatLab ePsych crash files and rename it appropriately.
                 % This chunk should take care of the rest
-                Session(k).Data = temp.data;
-                Session(k).Info = temp.info;
-                Session(k).Info.Name = temp.info.Subject.Name;
-                Session(k).Info.Date = temp.info.StartDate;
-                Session(k).Info.Bits = struct('hit',1, 'miss', 2, 'cr', 3, 'fa', 4);
+                behav_sessions(k).Data = temp.data;
+                behav_sessions(k).Info = temp.info;
+                behav_sessions(k).Info.Name = temp.info.Subject.Name;
+                behav_sessions(k).Info.Date = temp.info.StartDate;
+                behav_sessions(k).Info.Bits = struct('hit',1, 'miss', 2, 'cr', 3, 'fa', 4);
             catch ME
                 if strcmp(ME.identifier, 'MATLAB:nonExistentField')
                     % If this happens a second time, we might be dealing
                     % with a frequency tuning file, which for the moment is
                     % missing the Info field. Handle this here
-                    Session(k).Data = temp.Data;
+                    behav_sessions(k).Data = temp.Data;
                     
                     % Exctract start date from first ComputerTimestamp
                     first_timestamp = datetime(struct2table(temp.Data).ComputerTimestamp(1,:));
-                    Session(k).Info.Name = subj_id;
-                    Session(k).Info.Date = [int2str(day(first_timestamp)) '-' ...
+                    behav_sessions(k).Info.Name = subj_id;
+                    behav_sessions(k).Info.Date = [int2str(day(first_timestamp)) '-' ...
                                             cell2mat(month(first_timestamp, "shortname")) '-' ...
                                             int2str(year(first_timestamp))];
-                    Session(k).Info.StartTime = struct2table(temp.Data).ComputerTimestamp(1,:);
+                    behav_sessions(k).Info.StartTime = struct2table(temp.Data).ComputerTimestamp(1,:);
                 else
                     throw(ME)
                 end        
@@ -98,4 +98,4 @@ end
 
 
 savename = fullfile(savepath,[subj_id '_allSessions.mat']);
-save(savename,'Session')
+save(savename, 'behav_sessions')

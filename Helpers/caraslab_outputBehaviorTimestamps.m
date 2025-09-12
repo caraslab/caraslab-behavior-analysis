@@ -33,7 +33,11 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
     % Catch error if -mat file is not found
     try
         fprintf('----------\nLoading behavioral -mat file: %s.......\n----------\n', files.name)
-        load(fullfile(files.folder, files.name));
+        
+        %Start fresh and avoids conflict with OpenEphys pipeline
+        clear behav_sessions
+
+        behav_files = load(fullfile(files.folder, files.name));
     catch ME
         if strcmp(ME.identifier, 'MATLAB:load:couldNotReadFile')
 %             fprintf('\n-mat file not found\n')
@@ -44,7 +48,8 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
             return
         end
     end
-
+    
+    behav_sessions = behav_files.behav_sessions;
 
     switch recording_format
         % TODO 1: CATCH ERROR WHEN FOLDERS DO NOT CONTAIN EPHYS RECPRDINGS
@@ -78,24 +83,35 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 folder_block = epData.info.blockname;
                 cur_session = [];
                 found_session_flag = 0;
-                for session_idx=1:numel(Session)
+                for session_idx=1:numel(behav_sessions)
 
                     try
-                        session_block = Session(session_idx).Info.ephys.block;
+                        session_block = behav_sessions(session_idx).Info.ephys.block;
                     catch ME
-                        if strcmp(ME.message, 'Reference to non-existent field ''ephys''.')
+                        if strcmp(ME.identifier, 'MATLAB:nonExistentField')
                             % This error appears when the file used for behavior is
                             % the recovered file from matlab crash files
                             % Variables have different names
-                            session_block = Session(session_idx).Info.Subject.ephys.block;
-
+                            try
+                                session_block = behav_sessions(session_idx).Info.Subject.ephys.block;
+                            catch ME
+                                fprintf(ME.identifier)
+                                fprintf(ME.message)
+                                fprintf('Issue with %s\n', [behav_sessions(session_idx).Info.Name ' ' behav_sessions(session_idx).Info.Date])
+                                fprintf('Is it possible that no neural activity was recorded this day? Skipping file...\n\n')
+                                continue
+                            end
                         else
-                            rethrow(ME);
+                            fprintf(ME.identifier)
+                            fprintf(ME.message)
+                            fprintf('Issue with %s\n', [behav_sessions(session_idx).Info.Name ' ' behav_sessions(session_idx).Info.Date])
+                            fprintf('Skipping file...\n\n')
+                            continue
                         end
                     end
 
                     if strcmp(folder_block, session_block)
-                        cur_session = Session(session_idx);
+                        cur_session = behav_sessions(session_idx);
                         found_session_flag = 1;
                         break
                     end
@@ -103,7 +119,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 if ~found_session_flag
                     continue
                 end
-                % Skip empty Session
+                % Skip empty behav_sessions
                 if numel(cur_session.Data) == 1
                     continue
                 end
@@ -118,7 +134,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_spoutTimestamps.csv']), 'w');
 
-                header = {'Subj_id', 'Session_id', 'Spout_onset', 'Spout_offset'};
+                header = {'Subj_id', 'behav_sessions_id', 'Spout_onset', 'Spout_offset'};
                 fprintf(fileID,'%s,%s,%s,%s\n', header{:});
                 nrows = length(spout_onsets);
                 for idx = 1:nrows
@@ -127,6 +143,24 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     fprintf(fileID,'%s,%s,%f,%f\n', output_cell{:});
                 end
                 fclose(fileID);
+                %% Output opto LED onset-offset timestamps (if they exist)
+                if isfield(epData.epocs, 'LEDt')
+                    led_onsets = epData.epocs.LEDt.onset;
+                    led_offsets = epData.epocs.LEDt.offset;
+    
+                    fileID = fopen(fullfile(cur_savedir, 'Info files', ...
+                        [subj_id '_' session_id '_optoTimestamps.csv']), 'w');
+    
+                    header = {'Subj_id', 'behav_sessions_id', 'LED_onset', 'LED_offset'};
+                    fprintf(fileID,'%s,%s,%s,%s\n', header{:});
+                    nrows = length(led_onsets);
+                    for idx = 1:nrows
+                        output_cell = {subj_id, session_id, led_onsets(idx), led_offsets(idx)};
+    
+                        fprintf(fileID,'%s,%s,%f,%f\n', output_cell{:});
+                    end
+                    fclose(fileID);
+                end
                 %% Output trial parameters
                 % Combine the ephys-timelocked timestamps with the 
                 % session info from ePsych; also translate the response code bitmask
@@ -168,7 +202,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 
                 
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
-                session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
+                session_data.behav_sessions_id = repmat([session_id], size(session_data, 1), 1);
                 % Unmask the bitmask    
                 response_code_bits = cur_session.Info.Bits;
                 session_data.Hit = bitget(session_data.ResponseCode, response_code_bits.hit);
@@ -197,7 +231,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
             % wrong behavior with ephys if you have a single behavior
             % file in the folder which happens to be the wrong one. In
             % other words, it is not fool-proof
-            distance_matrix = Inf(length(ephysfolders), length(Session));
+            distance_matrix = Inf(length(ephysfolders), length(behav_sessions));
             %  Loop through all folders first to find the distances
             for ephys_folder_idx = 1:numel(ephysfolders)
                 cur_path.name = ephysfolders{ephys_folder_idx};
@@ -206,6 +240,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 %Load in info file
                 % Catch error if -mat file is not found
                 try
+                    clear epData
                     load(fullfile(cur_savedir, [cur_path.name '.info']), 'epData', '-mat');
                 catch ME
                     if strcmp(ME.identifier, 'MATLAB:load:couldNotReadFile')
@@ -220,22 +255,32 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
             
                 folder_block = epData.info.blockname;
                 cur_session = [];
-                for session_idx=1:numel(Session)
-                    behavior_timestamp = fix(Session(session_idx).Info.StartTime);
-                    behavior_timestamp = datenum(behavior_timestamp);
+                for session_idx=1:numel(behav_sessions)
+                    % Handle ePsych crash file format here
+                    % Because of the weird StartTime format, the resulting
+                    % variable is an array, so use the other fields to
+                    % complement the timestamp
+                    if isstring(behav_sessions(session_idx).Info.StartTime) | ischar(behav_sessions(session_idx).Info.StartTime)
+                        full_timestamp_string = [behav_sessions(session_idx).Info.StartTime ' ' behav_sessions(session_idx).Info.StartDate];
+                        behavior_timestamp = fix(datevec(datetime(full_timestamp_string, 'InputFormat', 'h:mm a MMM-dd-yyyy')));
+                        behav_sessions(session_idx).Info.StartTime = behavior_timestamp;
+                        behavior_timestamp = datetime(behavior_timestamp);
+                    else
+                        behavior_timestamp = fix(behav_sessions(session_idx).Info.StartTime);
+                        behavior_timestamp = datetime(behavior_timestamp);
+                    end
 
                     ephys_timestamp = epData.info.StartTime;
-                    ephys_timestamp = datenum(ephys_timestamp);
+                    ephys_timestamp = datetime(ephys_timestamp);
 
-
-                    time_difference = abs(behavior_timestamp - ephys_timestamp);
+                    time_difference = seconds(abs(behavior_timestamp - ephys_timestamp));
 
                     distance_matrix(ephys_folder_idx, session_idx) = time_difference;
                 end
             end
 
             % Now loop through all folders again using the distances
-            for session_idx = 1:numel(Session)
+            for session_idx = 1:numel(behav_sessions)
                 [~, closest_ephys_idx] = min(distance_matrix(:, session_idx));
                 cur_path.name = ephysfolders{closest_ephys_idx};
                 cur_savedir = fullfile(Savedir, cur_path.name);
@@ -255,12 +300,24 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     end
                 end
 
-                cur_session = Session(session_idx);
-                
+                cur_session = behav_sessions(session_idx);
+
                 % TODO: Alternative to the above: extract date from ePsych
-                % file and match to folder names
-                
-                % Skip empty Session
+                % file and match to folder namesda
+
+                % If identified folder is not within 5 minutes of
+                % behavioral session, code probably found the wrong
+                % recording, or the target recording is not present in the
+                % sorting folder. Skip the file
+                cur_ephys_timestamp = datetime(epData.info.StartTime);
+                cur_session_timestamp = datetime(cur_session.Info.StartTime);
+                lag_seconds = seconds(cur_ephys_timestamp - cur_session_timestamp);
+                if abs(lag_seconds) > 300
+                    fprintf('EPhys folder not found for %s. Skipping session...\n', cur_path.name)
+                    continue
+                end
+
+                % Skip empty behav_sessions
                 if numel(cur_session.Data) == 1
                     continue
                 end
@@ -303,7 +360,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                         [subj_id '_' session_id '_spoutTimestamps.csv']), 'w');
 
-                    header = {'Subj_id', 'Session_id', 'Spout_onset', 'Spout_offset'};
+                    header = {'Subj_id', 'behav_sessions_id', 'Spout_onset', 'Spout_offset'};
                     fprintf(fileID,'%s,%s,%s,%s\n', header{:});
                     nrows = length(spout_onset_timestamps);
                     for idx = 1:nrows
@@ -327,11 +384,20 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                 sound_onset_timestamps = all_sound_timestamps(sound_onset_events);
                 sound_offset_timestamps = all_sound_timestamps(sound_offset_events);
+                
+                % It is possible that there's a timestamp missing.
+                % Eliminate the last one from the largest array for now
+                if length(sound_onset_timestamps) ~= length(sound_offset_timestamps)
+                    min_length = min(length(sound_onset_timestamps), length(sound_offset_timestamps));
+                    sound_onset_timestamps = sound_onset_timestamps(1:min_length);
+                    sound_offset_timestamps = sound_offset_timestamps(1:min_length);
+
+                end
 
                 fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_AMsoundTimestamps.csv']), 'w');
 
-                header = {'Subj_id', 'Session_id', 'Sound_onset', 'Sound_offset'};
+                header = {'Subj_id', 'behav_sessions_id', 'Sound_onset', 'Sound_offset'};
                 fprintf(fileID,'%s,%s,%s,%s\n', header{:});
                 nrows = length(sound_onset_timestamps);
                 for idx = 1:nrows
@@ -358,22 +424,34 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     trial_offset_events = trial_event_states == 0;
 
                     try
-
                         session_data.Trial_onset = all_trial_events_timestamps(trial_onset_events);
                         session_data.Trial_offset = all_trial_events_timestamps(trial_offset_events);
                     catch ME
                         if strcmp(ME.identifier, 'MATLAB:table:RowDimensionMismatch')
                             fprintf('Trial number mismatch between ePsych and intan system for: %s\n', cur_path.name)
-                            fprintf('Attempting to fix by removing last trial and checking for drift...\n')
 
                             min_trials = min(height(session_data), length(all_trial_events_timestamps(trial_onset_events)));
 
                             temp_onset = all_trial_events_timestamps(trial_onset_events);
                             temp_offset = all_trial_events_timestamps(trial_offset_events);       
-
-                            session_data.Trial_onset = temp_onset(1:min_trials);
-                            session_data.Trial_offset = temp_offset(1:min_trials);
                             
+                            % Usually ePsych registers one trial less than
+                            % intan, but it could be the other way around
+                            % too. Handle both cases here
+                            try
+                                session_data.Trial_onset = temp_onset(1:min_trials);
+                                session_data.Trial_offset = temp_offset(1:min_trials);
+                                fprintf('Intan events contain more entries than ePsych.\n')
+                            catch ME
+                                if strcmp(ME.identifier, 'MATLAB:table:RowDimensionMismatch')
+                                    session_data = session_data(1:min_trials, :);
+                                    session_data.Trial_onset = temp_onset;
+                                    session_data.Trial_offset = temp_offset;
+                                    fprintf('ePsych file contains more entries than Intan events.\n')
+                                else
+                                    rethrow(ME)
+                                end
+                            end
                             
                             % VERY SPECIAL CASE HANDLING
                             % I noticed that the timestamps of some recordings became
@@ -387,11 +465,13 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
 
                             % Detect the issue using the computer timestamps
                             % They are not reliable but large discrepancies indicate an issue
-                            iterations = 0;
-                            [session_data, iterations] = detect_ePsych_drift(session_data, epData, string(epData.info.blockname), recording_format);
+                            [session_data, iterations, ~] = detect_ePsych_drift(session_data, epData, ...
+                                string(epData.info.blockname), recording_format, struct2table(cur_session.Data));
                             
                             if iterations == 0
-                                fprintf('Mismatch was fixed after last session removal!\n')
+                                fprintf('Mismatch was fixed after last trial removal!\n')
+                            elseif iterations == 5
+                                fprintf('Mismatch was fixed after first trial removal!\n')
                             else
                                 fprintf('Mismatch was fixed after drift detection!\n')
                             end
@@ -440,7 +520,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 end
                 
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
-                session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
+                session_data.behav_sessions_id = repmat([session_id], size(session_data, 1), 1);
 
                 writetable(session_data, fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_trialInfo.csv']));
@@ -456,8 +536,8 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
             end
 
         case 'optoBehavior'
-            for session_idx=1:numel(Session)
-                cur_session = Session(session_idx);
+            for session_idx=1:numel(behav_sessions)
+                cur_session = behav_sessions(session_idx);
 
                 subj_id = cur_session.Info.Name;
                 session_id = cur_session.Info.Date;
@@ -471,7 +551,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_data = struct2table(cur_session.Data);
 
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
-                session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
+                session_data.behav_sessions_id = repmat([session_id], size(session_data, 1), 1);
                 % Unmask the bitmask    
                 response_code_bits = cur_session.Info.Bits;
                 session_data.Hit = bitget(session_data.ResponseCode, response_code_bits.hit);
@@ -514,8 +594,8 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
             end
 
         case '1IFC'
-            for session_idx=1:numel(Session)
-                cur_session = Session(session_idx);
+            for session_idx=1:numel(behav_sessions)
+                cur_session = behav_sessions(session_idx);
 
                 subj_id = cur_session.Info.Name;
                 session_id = cur_session.Info.Date;
@@ -529,7 +609,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 session_data = struct2table(cur_session.Data);
 
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
-                session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
+                session_data.behav_sessions_id = repmat([session_id], size(session_data, 1), 1);
                 % Unmask the bitmask    
                 response_code_bits = cur_session.Info.Bits;
                 session_data.Hit = session_data.ResponseCode == response_code_bits.Rtrough_hit;
@@ -603,16 +683,16 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 folder_block = epData.info.blockname;
                 cur_session = [];
                 found_session_flag = 0;
-                for session_idx=1:numel(Session)
+                for session_idx=1:numel(behav_sessions)
 
                     try
-                        session_block = Session(session_idx).Info.TDT.Subject.ephys.block;
+                        session_block = behav_sessions(session_idx).Info.TDT.Subject.ephys.block;
                     catch ME
                         if strcmp(ME.identifier, 'MATLAB:nonExistentField')
                             % This error appears when the file used for behavior is
                             % the recovered file from matlab crash files
                             % Variables have different names
-                            session_block = Session(session_idx).Info.Subject.ephys.block;
+                            session_block = behav_sessions(session_idx).Info.Subject.ephys.block;
 
                         else
                             rethrow(ME);
@@ -620,7 +700,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     end
 
                     if strcmp(folder_block, session_block)
-                        cur_session = Session(session_idx);
+                        cur_session = behav_sessions(session_idx);
                         found_session_flag = 1;
                         break
                     end
@@ -629,8 +709,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     continue
                 end
 
-                
-                % Skip empty Session
+                % Skip empty behav_sessions
                 if numel(cur_session.Data) == 1
                     continue
                 end
@@ -654,7 +733,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_nosePokeTimestamps.csv']), 'w');
 
-                header = {'Subj_id', 'Session_id', 'Nosepoke_onset', 'Nosepoke_offset'};
+                header = {'Subj_id', 'behav_sessions_id', 'Nosepoke_onset', 'Nosepoke_offset'};
                 fprintf(fileID,'%s,%s,%s,%s\n', header{:});
                 nrows = length(nosepoke_onsets);
                 for idx = 1:nrows
@@ -678,7 +757,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_leftTroughTimestamps.csv']), 'w');
 
-                header = {'Subj_id', 'Session_id', 'LTrough_onset', 'LTrough_offset'};
+                header = {'Subj_id', 'behav_sessions_id', 'LTrough_onset', 'LTrough_offset'};
                 fprintf(fileID,'%s,%s,%s,%s\n', header{:});
                 nrows = length(ltrough_onsets);
                 for idx = 1:nrows
@@ -703,7 +782,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_rightTroughTimestamps.csv']), 'w');
 
-                header = {'Subj_id', 'Session_id', 'RTrough_onset', 'RTrough_offset'};
+                header = {'Subj_id', 'behav_sessions_id', 'RTrough_onset', 'RTrough_offset'};
                 fprintf(fileID,'%s,%s,%s,%s\n', header{:});
                 nrows = length(rtrough_onsets);
                 for idx = 1:nrows
@@ -718,7 +797,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 fileID = fopen(fullfile(cur_savedir, 'Info files', ...
                     [subj_id '_' session_id '_cameraTimestamps.csv']), 'w');
 
-                header = {'Subj_id', 'Session_id', 'CameraFrame_onset', 'CameraFrame_number'};
+                header = {'Subj_id', 'behav_sessions_id', 'CameraFrame_onset', 'CameraFrame_number'};
                 fprintf(fileID,'%s,%s,%s,%s\n', header{:});
                 nrows = length(camFrame_onsets);
                 for idx = 1:nrows
@@ -759,7 +838,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                 end
 
                 session_data.Subj_id = repmat([subj_id], size(session_data, 1), 1);
-                session_data.Session_id = repmat([session_id], size(session_data, 1), 1);
+                session_data.behav_sessions_id = repmat([session_id], size(session_data, 1), 1);
                 % Unmask the bitmask
                 response_code_bits = cur_session.Info.Bits;
                 session_data.Hit = session_data.ResponseCode == response_code_bits.Rtrough_hit;
