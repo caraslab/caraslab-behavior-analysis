@@ -161,6 +161,7 @@ for which_file = 1:length(file_index)
     load(savename);
     block_id = {};
     thresholds = {};
+    slopes = {};
     trial_blocks = {};
     optoStims = {};
     for session_idx=1:numel(behav_sessions)
@@ -178,6 +179,7 @@ for which_file = 1:length(file_index)
             end
 
            cur_threshold = output(session_idx).fitdata.threshold;
+           cur_slope = output(session_idx).fitdata.slope;
         catch ME
             if strcmp(ME.identifier, 'MATLAB:structRefFromNonStruct')
                 fprintf(ME.message);
@@ -189,7 +191,8 @@ for which_file = 1:length(file_index)
 
         block_id{end+1} = cur_block_id;
         thresholds{end+1} = cur_threshold;
-                
+        slopes{end+1} = cur_slope;
+
         % Check for trial block field
         if isfield(behav_sessions(session_idx).Info, 'Trial_block')
             trial_block = behav_sessions(session_idx).Info.Trial_block;
@@ -203,9 +206,9 @@ for which_file = 1:length(file_index)
         end
     end
 
-    output_table = cell2table(horzcat(block_id', thresholds'));
+    output_table = cell2table(horzcat(block_id', thresholds', slopes'));
 
-    output_table.Properties.VariableNames = {'Block_id' 'Threshold'};
+    output_table.Properties.VariableNames = {'Block_id' 'Threshold', 'Slope'};
 
     if ~isempty(trial_blocks)
         output_table.Trial_blocks = cell2mat(trial_blocks)';

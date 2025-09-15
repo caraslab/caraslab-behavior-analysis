@@ -56,7 +56,7 @@ end
 %%  If this function is run directly (behavior only; no ephys data will be analyzed)
 if nargin ==0
     % default_dir = '/mnt/CL_4TB_2/Matt/OFC_PL_recording/matlab_data_files';
-    default_dir = '/mnt/CL_8TB_3/Matheus/Ephys recordings/OFC-GtACR2_ACx-Electrode/matlab_data_files';
+    default_dir = '/mnt/CL_4TB_2/Matt/Fiber photometry/ACx-AAVrg-GCaMP8s_OFC-VO-fiber/matlab_data_files';
 
     Savedir = uigetdir(default_dir, 'Select save directory');
     if Savedir == 0
@@ -65,12 +65,12 @@ if nargin ==0
     end
     Behaviordir = default_dir;
 
-    experiment_type = 'optoBehavior';  % none or optoBehavior
+    experiment_type = 'none';  % none or optoBehavior
 
     % Tweak these
-    n_trial_blocks = 25;  % no splitting: 0
-    split_by_optostim = 1;  % no splitting: 0
-    universal_nogo = 0;  % Only relevant if splitting by optostim
+    n_trial_blocks = 0;  % no splitting: 0
+    split_by_optostim = 0;  % no splitting: 0
+    universal_nogo = 1;  % Only relevant if splitting by optostim
 end
 %%
 %Prompt user to select folders
