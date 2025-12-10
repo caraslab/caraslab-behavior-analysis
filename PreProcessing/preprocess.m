@@ -329,7 +329,7 @@ function output = create_mats(behav_sessions, output, j, output_dir, trial_subse
         output_table.Properties.VariableNames = {'Stimulus', 'd_prime', 'Block_id'};
     end
 
-    writetable(output_table, fullfile(output_dir, [subj_id '_allbehav_sessionss_dprimeMat.csv']), 'WriteMode',write_or_append);
+    writetable(output_table, fullfile(output_dir, [subj_id '_allSessions_dprimeMat.csv']), 'WriteMode',write_or_append);
     
 function output = create_1IFC_mats(behav_sessions, output, j, output_dir, trial_subset, assert_five_amdepths)
 
@@ -596,7 +596,7 @@ function output = create_1IFC_mats(behav_sessions, output, j, output_dir, trial_
         output_table.Properties.VariableNames = {'Stimulus', 'Adjusted_N_FA_or_Hit', 'N_trials', 'N_FA_or_Hit', 'Block_id'};
     end
 
-    writetable(output_table, fullfile(output_dir, [subj_id '_allbehav_sessionss_trialMat.csv']), 'WriteMode',write_or_append);
+    writetable(output_table, fullfile(output_dir, [subj_id '_allSessions_trialMat.csv']), 'WriteMode',write_or_append);
     
     %Now dprimemat
     output_table = array2table(dprimemat);
@@ -610,5 +610,5 @@ function output = create_1IFC_mats(behav_sessions, output, j, output_dir, trial_
         output_table.Properties.VariableNames = {'Stimulus', 'd_prime', 'Block_id'};
     end
 
-    writetable(output_table, fullfile(output_dir, [subj_id '_allbehav_sessionss_dprimeMat.csv']), 'WriteMode',write_or_append);
+    writetable(output_table, fullfile(output_dir, [subj_id '_allSessions_dprimeMat.csv']), 'WriteMode',write_or_append);
          
