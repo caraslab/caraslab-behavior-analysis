@@ -1,43 +1,43 @@
 function caraslab_split_opto_trials(files_path, universal_nogo)
 % This file splits the ePsych behavioral .mat file into opto ON vs opto OFF
-% blocks. Then, it saves a copy of behav_sessions, Info to the output .mat file
+% blocks. Then, it saves a copy of Session, Info to the output .mat file
 % containing a field within Info called Optostatus.
 % universal_nogo (0 or 1): if 1, includes all no-go trials in both
-% Optostatus blocks. If 0, splits no-go trials depending on opto status
+%  Optostatus blocks. If 0, splits no-go trials depending on opto status.
 
 %List the files in the folder (each file = animal)
 [files,fileIndex] = listFiles(files_path,'*allSessions.mat');
 files = files(fileIndex);
 
-% Depending on the experiment, these might have different names. 
+% Depending on the experiment, these might have different names. Simply add
+% to the end of this string if your experiment has something different.
 optoTagNames = 'JitOnset';
 
 %For each file...
 for i = 1:numel(files)
 
-    %Start fresh and avoids conflict with OpenEphys pipeline
-    clear behav_sessions
+    %Start fresh
+    clear Session
     output = [];
 
     %Load data
     filename=files(i).name;
     data_file= fullfile(files_path, filename);
-    behav_files = load(data_file);
-    behav_sessions = behav_files.behav_sessions;
+    load(data_file);
 
-    behav_sessions_outputCopy = struct();
+    Session_outputCopy = struct();
     dummy_counter = 1;
     %For each session...
-    for j = 1:numel(behav_sessions)
+    for j = 1:numel(Session)
         % Skip empty training sessions
-        if ~(length(behav_sessions(j).Data) > 1)
+        if ~(length(Session(j).Data) > 1)
            continue
         end
 
-        temp_tablebehav_sessions = struct2table(behav_sessions(j).Data);
+        temp_tableSession = struct2table(Session(j).Data);
 
         % Find opto tag
-        field_names = temp_tablebehav_sessions.Properties.VariableNames;
+        field_names = temp_tableSession.Properties.VariableNames;
         opto_index = 0;
         for fn_index=1:length(field_names)
             if contains(optoTagNames, field_names{fn_index})
@@ -49,38 +49,39 @@ for i = 1:numel(files)
         if opto_index > 0
             optoTag = field_names{opto_index};
         else
-            fprintf('Opto tag name not found. Aborting...')
-            continue
+            fprintf('\tOpto tag name not found. Adding an Opto tag column just so analyses don''t crash, but make sure to double-check this...\n')
+            optoTag = optoTagNames;
+            temp_tableSession.(optoTagNames) = zeros(size(temp_tableSession, 1), 1);
         end
 
-        opto_status = temp_tablebehav_sessions.(optoTag);
-        ttype_tags = temp_tablebehav_sessions.TrialType;
+        opto_status = temp_tableSession.(optoTag);
+        ttype_tags = temp_tableSession.TrialType;
         if universal_nogo
-            opto_behav_sessions = temp_tablebehav_sessions(opto_status == 1 | ttype_tags == 1, :);
-            noOpto_behav_sessions = temp_tablebehav_sessions(opto_status == 0 | ttype_tags == 1, :);
+            opto_Session = temp_tableSession(opto_status == 1 | ttype_tags == 1, :);
+            noOpto_Session = temp_tableSession(opto_status == 0 | ttype_tags == 1, :);
         else
-            opto_behav_sessions = temp_tablebehav_sessions(opto_status == 1, :);
-            noOpto_behav_sessions = temp_tablebehav_sessions(opto_status == 0, :);
+            opto_Session = temp_tableSession(opto_status == 1, :);
+            noOpto_Session = temp_tableSession(opto_status == 0, :);
         end
 
         % Save as separate sessions but with same Info (if there are
         % trials in them)
-        if height(opto_behav_sessions) > 1
-            behav_sessions_outputCopy(dummy_counter).Data = table2struct(opto_behav_sessions);
-            behav_sessions_outputCopy(dummy_counter).Info = behav_sessions(j).Info;
-            behav_sessions_outputCopy(dummy_counter).Info.Optostim = 1; 
+        if height(opto_Session) > 1
+            Session_outputCopy(dummy_counter).Data = table2struct(opto_Session);
+            Session_outputCopy(dummy_counter).Info = Session(j).Info;
+            Session_outputCopy(dummy_counter).Info.Optostim = 1; 
             dummy_counter = dummy_counter + 1;
         end
 
-        if height(noOpto_behav_sessions) > 1
-            behav_sessions_outputCopy(dummy_counter).Data = table2struct(noOpto_behav_sessions);
-            behav_sessions_outputCopy(dummy_counter).Info = behav_sessions(j).Info;
-            behav_sessions_outputCopy(dummy_counter).Info.Optostim = 0;
+        if height(noOpto_Session) > 1
+            Session_outputCopy(dummy_counter).Data = table2struct(noOpto_Session);
+            Session_outputCopy(dummy_counter).Info = Session(j).Info;
+            Session_outputCopy(dummy_counter).Info.Optostim = 0;
             dummy_counter = dummy_counter + 1;
         end
     end
-    behav_sessions = behav_sessions_outputCopy;
+    Session = Session_outputCopy;
     %Overwrite previous allSessions file
-    save(data_file,'behav_sessions')
+    save(data_file,'Session')
 end
        
