@@ -18,18 +18,18 @@ function caraslab_behav_pipeline(Savedir, Behaviordir, varargin)
 
 % Behaviordir: Where the ePsych behavior files are; -mat files will be
 %   combined into a single file. Before running this, group similar sessions
-%   into folders named: 
+%   into folders named:
 %   shock_training, psych_testing, pre_passive, post_passive
 
-% experiment_type: optional: 'none', 'synapse', 'intan', 'optoBehavior', '1IFC', 'synapse_1IFC'
+% experiment_type: optional: 'behavior', 'synapse', 'intan', '1IFC', 'synapse_1IFC'
 
 % Defaults
-split_by_optostim = 0;
-universal_nogo = 1;
-experiment_type = 'none';
+split_by_optostim    = 0;
+universal_nogo       = 1;
+experiment_type      = 'behavior';
 assert_five_amdepths = 0;
-trial_subset = NaN;
-n_trial_blocks = 0;
+trial_subset         = NaN;
+n_trial_blocks       = 0;
 
 % Loading optional arguments
 while ~isempty(varargin)
@@ -46,124 +46,184 @@ while ~isempty(varargin)
             trial_subset = varargin{2};
         case 'n_trial_blocks'
             n_trial_blocks = varargin{2};
-      otherwise
-          error(['Unexpected parameter: ' varargin{1}])
+        otherwise
+            error(['Unexpected parameter: ' varargin{1}])
     end
     varargin(1:2) = [];
 end
 
 
 %%  If this function is run directly (behavior only; no ephys data will be analyzed)
-if nargin ==0
-    % default_dir = '/mnt/CL_4TB_2/Matt/OFC_PL_recording/matlab_data_files';
-    default_dir = '/mnt/CL_4TB_2/Matt/Fiber photometry/ACx-AAVrg-GCaMP8s_OFC-VO-fiber/matlab_data_files';
+if nargin == 0
+    default_dir = 'G:\My Drive\Documents\PycharmProjects\Photometry_processing\Data_OFC-axonGCaMP8s_V1-fiber\Behavioral performance\matlab_data_files';
 
-    Savedir = uigetdir(default_dir, 'Select save directory');
-    if Savedir == 0
-        warning('Save folder was not selected. Aborting...')
+    % Select MULTIPLE save directories (one per animal/subject)
+    Savedirs_paths = uigetfile_n_dir(default_dir, 'Select one or more save directories');
+    if isempty(Savedirs_paths)
+        warning('No save folders selected. Aborting...')
         return
     end
-    Behaviordir = default_dir;
 
-    experiment_type = 'none';  % none or optoBehavior
+    experiment_type   = 'behavior';
+    n_trial_blocks    = 0;
+    split_by_optostim = 0;
+    universal_nogo    = 1;
 
-    % Tweak these
-    n_trial_blocks = 0;  % no splitting: 0
-    split_by_optostim = 0;  % no splitting: 0
-    universal_nogo = 1;  % Only relevant if splitting by optostim
+    %% Loop over each selected save directory
+    for s = 1:numel(Savedirs_paths)
+        cur_top_savedir = Savedirs_paths{s};
+        fprintf('\n=== Processing Savedir %d/%d: "%s" ===\n', s, numel(Savedirs_paths), cur_top_savedir);
+
+        % Auto-discover Behaviordir
+        Behaviordirs = find_mat_dirs(cur_top_savedir);
+
+        if isempty(Behaviordirs)
+            warning('No .mat files found in "%s" or its immediate subfolders. Skipping...', cur_top_savedir)
+            continue
+        end
+
+        for b = 1:numel(Behaviordirs)
+            fprintf('\n--- Behaviordir %d/%d: "%s" ---\n', b, numel(Behaviordirs), Behaviordirs{b});
+            run_pipeline(Behaviordirs{b}, cur_top_savedir, ...
+                experiment_type, assert_five_amdepths, trial_subset, ...
+                n_trial_blocks, split_by_optostim, universal_nogo, false);
+        end
+    end
+
+else
+    % Called programmatically with explicit Savedir and Behaviordir:
+    % original single-run behavior, unchanged.
+    run_pipeline(Behaviordir, Savedir, ...
+        experiment_type, assert_five_amdepths, trial_subset, ...
+        n_trial_blocks, split_by_optostim, universal_nogo, true);
 end
-%%
-%Prompt user to select folders
-% uigetfile_n_dir copied from here:
-% https://www.mathworks.com/matlabcentral/fileexchange/32555-uigetfile_n_dir-select-multiple-files-and-directories
-datafolders_names = uigetfile_n_dir(Behaviordir,'Select data directory');  
-if isempty(datafolders_names)
-    warning('Data folders not selected. Aborting...')
-    return
-end
-datafolders = {};
-for i=1:length(datafolders_names)
-    [~, datafolders{end+1}, ~] = fileparts(datafolders_names{i});
-end
-% Update Behaviordir in case it changed
-[Behaviordir, ~, ~] = fileparts(datafolders_names{1});
 
 
-%For each data folder...
+%% ------------------------------------------------------------------------
+function run_pipeline(Behaviordir, Savedir, experiment_type, assert_five_amdepths, ...
+                      trial_subset, n_trial_blocks, split_by_optostim, universal_nogo, ...
+                      interactive)
+
+if interactive
+    datafolders_names = uigetfile_n_dir(Behaviordir, 'Select data directory');
+    if isempty(datafolders_names)
+        warning('Data folders not selected for "%s". Skipping...', Behaviordir)
+        return
+    end
+    datafolders = {};
+    for i = 1:length(datafolders_names)
+        [~, datafolders{end+1}, ~] = fileparts(datafolders_names{i});
+    end
+    [Behaviordir, ~, ~] = fileparts(datafolders_names{1});
+
+else
+    fprintf('run_pipeline: auto-discovering sources in "%s"\n', Behaviordir);
+
+    % Check if .mat files exist directly in Behaviordir
+    mats = dir(fullfile(Behaviordir, '*.mat'));
+    if ~isempty(mats)
+        % .mat files are directly in Behaviordir — pass folder straight to combinefiles
+        fprintf('  .mat files found directly in Behaviordir, passing folder to combinefiles\n');
+        [parent, session_name, ~] = fileparts(Behaviordir);
+        datafolders = {session_name};
+        Behaviordir = parent;
+    else
+        contents   = dir(Behaviordir);
+        mask       = [contents.isdir] & ...
+                     ~strcmp({contents.name}, '.') & ...
+                     ~strcmp({contents.name}, '..') & ...
+                     ~strcmp({contents.name}, 'Behavior');
+        datafolders = {contents(mask).name};
+        fprintf('  Source subfolders found: %d\n', numel(datafolders));
+        for k = 1:numel(datafolders)
+            fprintf('    -> "%s"\n', datafolders{k});
+        end
+
+        if isempty(datafolders)
+            [parent, session_name, ~] = fileparts(Behaviordir);
+            fprintf('  No subfolders found, using Behaviordir itself as source: "%s"\n', session_name);
+            datafolders = {session_name};
+            Behaviordir = parent;
+        end
+    end
+end
+
+fprintf('  Running pipeline for %d source folder(s)\n', numel(datafolders));
+
 for i = 1:numel(datafolders)
-    cur_savedir = fullfile(Savedir, 'Behavior', datafolders{i});
+    cur_savedir   = fullfile(Savedir, 'Behavior', datafolders{i});
     cur_sourcedir = fullfile(Behaviordir, datafolders{i});
+    fprintf('  Source %d/%d: "%s"\n', i, numel(datafolders), cur_sourcedir);
     mkdir(cur_savedir);
 
-    %% 1. MERGE STRUCTURES (OPTIONAL)
-    %Use this script to merge the data and info structures from two different
-    %data files. Necessary when program crashes in the middle of testing, and a
-    %second session is run immediately after crash.
-
-    % Not implemented for current patch
-
-    % mergestruct
-
     %% 2. COMBINE INDIVIDUAL MAT FILES INTO SINGLE FILE
-    %This function takes mat files collected with the epsych program and
-    %combines them into a single file. Use this file to combine data from
-    %multiple sessions for a single animal into one mat file for easier
-    %storage, manipulation and analysis.
-    %
-    %Note: Combine all the shock training data files into one "training" file,
-    %and all the psychometric testing data into a separate "testing" file for
-    %each animal. Thus, in the end, each animal will have two behavioral files
-    %associated with it. This approach makes it easier to analyze different
-    %stages of learning separately.
-    caraslab_combinefiles(cur_sourcedir,cur_savedir)
+    caraslab_combinefiles(cur_sourcedir, cur_savedir)
 
     %% 2.1 Split blocks of n AM trials into separate Session entries
     if n_trial_blocks > 0
         caraslab_split_trial_blocks(cur_savedir, n_trial_blocks)
     end
-    
+
     %% 2.2 Split opto trials into separate Session entries
     if split_by_optostim
         caraslab_split_opto_trials(cur_savedir, universal_nogo)
     end
-    
-    %% 3. CREATE TRIALMAT AND DPRIMEMAT IN PREPARATION FOR PSYCHOMETRIC FITTING
-    %This function goes through each datafile in a directory, and calculates
-    %hits, misses and dprime values for each behavioral session. Aggregate data
-    %are compiled into an [1 x M] 'output' structure, where M is equal to the 
-    %number of behavioral sessions. 'output' has two fields:
-    %   'trialmat': [N x 3] matrix arranged as follows- 
-    %       [stimulus value, n_yes_responses, n_trials_delivered]
-    %
-    %   'dprimemat': [N x 2] matrix arranged as follows-
-    %       [stimulus value, dprime]
-    %
-    %Within each matrix, stimulus values are dB re:100% depth.
 
-    % This function also outputs two csv files with trial performance
-    % _allSessions_trialMat.csv: number of stimulus presentations and hits/FAs 
-    % _allSessions_dprimeMat.csv: d' by stimulus
+    %% 3. CREATE TRIALMAT AND DPRIMEMAT
     preprocess(cur_savedir, assert_five_amdepths, trial_subset, experiment_type)
 
-    %% 4. FIT PSYCHOMETRIC FUNCTIONS 
-    %Fits behavioral data with psychometric functions using psignifit v4. Fit
-    %info is saved to a data structure within the file. Fits are created both
-    %in percent correct space, and in dprime space. 
-    % In addition to plots, output a csv file with the thresholds by day
-    plot_pfs_behav(cur_savedir,cur_savedir)
+    %% 4. FIT PSYCHOMETRIC FUNCTIONS
+    plot_pfs_behav(cur_savedir, cur_savedir)
+
+    %% 5. OUTPUT TIMESTAMPS FOR EPHYS
+    caraslab_outputBehaviorTimestamps(cur_savedir, Savedir, experiment_type)
+end
 
 
-    %% 5. Output timestamps info for ephys
-    % This function extracts behavioral timestamps of relevance for ephys
-    % analyses. It searches within the processed ephys folder (Ephysdir) for information
-    % about the behavioral session contained in the .info file generated by the
-    % TDT system.
-    % Outputs:
-    %   *_spoutTimestamps.csv: All spout events containing onset and onset
-    %       times
-    %   *_trialInfo.csv: All trial events generated by the TDT system but with
-    %       a bit more processing to bit-unmask the response variables.
-    if ~strcmp(experiment_type, 'none')
-        caraslab_outputBehaviorTimestamps(cur_savedir, Savedir, experiment_type)
+%% ------------------------------------------------------------------------
+function Behaviordirs = find_mat_dirs(top_dir)
+% Search for directories containing .mat files:
+%   1. One level deep (L1 subfolders of top_dir)
+%   2. Fallback: top_dir itself
+
+Behaviordirs = {};
+
+fprintf('find_mat_dirs: searching in "%s"\n', top_dir);
+
+contents = dir(top_dir);
+subdirs  = contents([contents.isdir] & ...
+                    ~strcmp({contents.name}, '.') & ...
+                    ~strcmp({contents.name}, '..'));
+
+fprintf('  Level 1 subfolders: %d\n', numel(subdirs));
+for k = 1:numel(subdirs)
+    fprintf('    [L1] %s\n', subdirs(k).name);
+end
+
+% First: L1 subfolders that directly contain .mat files
+for k = 1:numel(subdirs)
+    candidate = fullfile(top_dir, subdirs(k).name);
+    mats = dir(fullfile(candidate, '*.mat'));
+    fprintf('  [L1] "%s": %d .mat files\n', candidate, numel(mats));
+    if ~isempty(mats)
+        Behaviordirs{end+1} = candidate; %#ok<AGROW>
+    end
+end
+
+% Fallback: check top_dir itself
+if isempty(Behaviordirs)
+    mats = dir(fullfile(top_dir, '*.mat'));
+    fprintf('  Fallback - top_dir itself: %d .mat files\n', numel(mats));
+    if ~isempty(mats)
+        Behaviordirs{end+1} = top_dir;
+    end
+end
+
+if isempty(Behaviordirs)
+    fprintf('  No .mat files found anywhere\n');
+else
+    fprintf('  Behaviordirs found: %d\n', numel(Behaviordirs));
+    for k = 1:numel(Behaviordirs)
+        fprintf('    -> "%s"\n', Behaviordirs{k});
     end
 end

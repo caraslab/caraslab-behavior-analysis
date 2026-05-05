@@ -535,7 +535,7 @@ function caraslab_outputBehaviorTimestamps(Behaviordir, Savedir, recording_forma
                     [subj_id '_' session_id '_ePsychMetadata']), 'Info', '-v7.3');
             end
 
-        case 'optoBehavior'
+        case 'behavior'
             for session_idx=1:numel(behav_sessions)
                 cur_session = behav_sessions(session_idx);
 
